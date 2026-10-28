@@ -1,0 +1,107 @@
+{
+  "id": "DIN934_M5",
+  "class_name": "DIN934_M5",
+  "family": "DIN934",
+  "kind": "nut",
+  "shape": "hex_nut",
+  "size": "M5",
+  "length": null,
+  "pitch": 0.8,
+  "fully_threaded": null,
+  "dims": {
+    "s": 8.0,
+    "m": 4.7,
+    "e": 8.79,
+    "d": 5.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel",
+    "brass",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.35
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -2.35
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 3074,
+    "triangles": 6148,
+    "watertight": true,
+    "volume_mm3": 177.46961592087303,
+    "area_mm2": 293.69322635608165,
+    "bbox_min": [
+      -4.618802070617676,
+      -4.0,
+      -2.3499999046325684
+    ],
+    "bbox_max": [
+      4.618802070617676,
+      4.0,
+      2.3499999046325684
+    ],
+    "center_of_mass": [
+      -0.0005204373124149602,
+      0.0005204366702586012,
+      9.327683296368029e-10
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        6148
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 20
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "bbc21cd586ee3830"
+}

@@ -1,0 +1,112 @@
+{
+  "id": "DIN912_M5x30",
+  "class_name": "DIN912_M5",
+  "family": "DIN912",
+  "kind": "screw",
+  "shape": "socket_cap",
+  "size": "M5",
+  "length": 30.0,
+  "pitch": 0.8,
+  "fully_threaded": false,
+  "dims": {
+    "dk": 8.5,
+    "k": 5.0,
+    "s": 4.0,
+    "t": 2.5,
+    "b": 22.0,
+    "full_thread_max_length": 25.0,
+    "d": 5.0,
+    "ds": 5.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": 30.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -30.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 4.25,
+    "tip": 2.5
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 18310,
+    "triangles": 36616,
+    "watertight": true,
+    "volume_mm3": 747.9354678803234,
+    "area_mm2": 900.5198181260894,
+    "bbox_min": [
+      -4.25,
+      -4.25,
+      -30.0
+    ],
+    "bbox_max": [
+      4.25,
+      4.25,
+      5.0
+    ],
+    "center_of_mass": [
+      0.000355466916850789,
+      9.955678789457187e-05,
+      -8.95957628966589
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        36616
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 120
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "756cfd785abc463d"
+}

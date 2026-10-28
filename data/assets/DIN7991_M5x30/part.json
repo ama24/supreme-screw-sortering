@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M5x30",
+  "class_name": "DIN7991_M5",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M5",
+  "length": 30.0,
+  "pitch": 0.8,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 10.0,
+    "k": 2.8,
+    "s": 3.0,
+    "t": 2.3,
+    "b": 22.0,
+    "full_thread_max_length": 35.0,
+    "d": 5.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 30.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.8
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -27.2
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 5.0,
+    "tip": 2.5
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 16654,
+    "triangles": 33304,
+    "watertight": true,
+    "volume_mm3": 551.8366749933766,
+    "area_mm2": 838.0640303119794,
+    "bbox_min": [
+      -5.0,
+      -5.0,
+      -27.200000762939453
+    ],
+    "bbox_max": [
+      5.0,
+      5.0,
+      2.799999952316284
+    ],
+    "center_of_mass": [
+      -0.00032326804795480813,
+      -0.00019108737613992096,
+      -10.225500344775696
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        33304
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "90d2eafb6f9e0abf"
+}

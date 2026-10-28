@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M3x20",
+  "class_name": "DIN7991_M3",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M3",
+  "length": 20.0,
+  "pitch": 0.5,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 6.0,
+    "k": 1.7,
+    "s": 2.0,
+    "t": 1.2,
+    "b": 18.0,
+    "full_thread_max_length": 30.0,
+    "d": 3.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 20.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        1.7
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -18.3
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 3.0,
+    "tip": 1.5
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 17902,
+    "triangles": 35800,
+    "watertight": true,
+    "volume_mm3": 129.71053687749887,
+    "area_mm2": 328.43633804587716,
+    "bbox_min": [
+      -3.0,
+      -3.0,
+      -18.299999237060547
+    ],
+    "bbox_max": [
+      3.0,
+      3.0,
+      1.7000000476837158
+    ],
+    "center_of_mass": [
+      0.0003982761963953724,
+      -0.0001565206540228741,
+      -7.076387678217113
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        35800
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "849519b3be8b06cb"
+}

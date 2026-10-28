@@ -37,3 +37,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Generated rest poses (regenerate with screwsynth-restposes compute --all)
+data/rest_poses/*.json
+data/rest_poses/*.png

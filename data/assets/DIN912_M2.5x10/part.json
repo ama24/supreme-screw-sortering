@@ -1,0 +1,111 @@
+{
+  "id": "DIN912_M2.5x10",
+  "class_name": "DIN912_M2.5",
+  "family": "DIN912",
+  "kind": "screw",
+  "shape": "socket_cap",
+  "size": "M2.5",
+  "length": 10.0,
+  "pitch": 0.45,
+  "fully_threaded": true,
+  "dims": {
+    "dk": 4.5,
+    "k": 2.5,
+    "s": 2.0,
+    "t": 1.1,
+    "b": 17.0,
+    "full_thread_max_length": 20.0,
+    "d": 2.5,
+    "ds": 2.5
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": 10.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.5
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -10.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 2.25,
+    "tip": 1.25
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 11030,
+    "triangles": 22056,
+    "watertight": true,
+    "volume_mm3": 73.8974066079033,
+    "area_mm2": 183.8835615266354,
+    "bbox_min": [
+      -2.25,
+      -2.25,
+      -10.0
+    ],
+    "bbox_max": [
+      2.25,
+      2.25,
+      2.5
+    ],
+    "center_of_mass": [
+      -1.9806424185176777e-05,
+      0.00023831302290387257,
+      -2.0484735420568816
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        22056
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 120
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "c77f625224071a9d"
+}

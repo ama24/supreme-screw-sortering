@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M10x40",
+  "class_name": "DIN7991_M10",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M10",
+  "length": 40.0,
+  "pitch": 1.5,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 20.0,
+    "k": 5.5,
+    "s": 6.0,
+    "t": 4.4,
+    "b": 32.0,
+    "full_thread_max_length": 50.0,
+    "d": 10.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 40.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        5.5
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -34.5
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 10.0,
+    "tip": 5.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 11374,
+    "triangles": 22744,
+    "watertight": true,
+    "volume_mm3": 3154.1334321350773,
+    "area_mm2": 2420.127412297965,
+    "bbox_min": [
+      -10.0,
+      -10.0,
+      -34.5
+    ],
+    "bbox_max": [
+      10.0,
+      10.0,
+      5.5
+    ],
+    "center_of_mass": [
+      -0.000809236523210492,
+      -0.0004654573853933089,
+      -11.088365034799619
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        22744
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "d0e5c8200b61c12b"
+}

@@ -1,0 +1,112 @@
+{
+  "id": "DIN912_M5x25",
+  "class_name": "DIN912_M5",
+  "family": "DIN912",
+  "kind": "screw",
+  "shape": "socket_cap",
+  "size": "M5",
+  "length": 25.0,
+  "pitch": 0.8,
+  "fully_threaded": true,
+  "dims": {
+    "dk": 8.5,
+    "k": 5.0,
+    "s": 4.0,
+    "t": 2.5,
+    "b": 22.0,
+    "full_thread_max_length": 25.0,
+    "d": 5.0,
+    "ds": 5.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": 25.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        5.0
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -25.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 4.25,
+    "tip": 2.5
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 15310,
+    "triangles": 30616,
+    "watertight": true,
+    "volume_mm3": 639.8303100431696,
+    "area_mm2": 844.5235794118391,
+    "bbox_min": [
+      -4.25,
+      -4.25,
+      -25.0
+    ],
+    "bbox_max": [
+      4.25,
+      4.25,
+      5.0
+    ],
+    "center_of_mass": [
+      5.7293973309884615e-05,
+      0.00038313270535094156,
+      -6.851184402263623
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        30616
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 120
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "bd6a2e13bc3d7012"
+}

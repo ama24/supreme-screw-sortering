@@ -1,0 +1,103 @@
+{
+  "id": "TNUT_SLIDE_S6_M4",
+  "class_name": "TNUT_SLIDE_S6_M4",
+  "family": "TNUT_SLIDE",
+  "kind": "tnut",
+  "shape": "tnut_slide",
+  "size": "M4",
+  "length": null,
+  "pitch": 0.7,
+  "fully_threaded": null,
+  "dims": {
+    "length": 10.0,
+    "width": 10.0,
+    "height": 4.0,
+    "neck_width": 5.8,
+    "neck_height": 1.5,
+    "d": 4.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "plain_steel",
+    "stainless_a2"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 2811,
+    "triangles": 5622,
+    "watertight": true,
+    "volume_mm3": 273.1230396751879,
+    "area_mm2": 372.057262663018,
+    "bbox_min": [
+      -5.0,
+      -5.0,
+      -2.0
+    ],
+    "bbox_max": [
+      5.0,
+      5.0,
+      2.0
+    ],
+    "center_of_mass": [
+      -0.00017529947267384057,
+      0.0006090112806045681,
+      -0.3011468193141401
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        5622
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 20
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "c8d166b9dd9b060f"
+}

@@ -1,0 +1,112 @@
+{
+  "id": "DIN933_M6x55",
+  "class_name": "DIN933_M6",
+  "family": "DIN933",
+  "kind": "screw",
+  "shape": "hex",
+  "size": "M6",
+  "length": 55.0,
+  "pitch": 1.0,
+  "fully_threaded": true,
+  "dims": {
+    "s": 10.0,
+    "k": 4.0,
+    "e": 11.05,
+    "dw": 8.88,
+    "c": 0.5,
+    "d": 6.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel",
+    "brass",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": 55.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        4.0
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -55.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 5.0,
+    "tip": 3.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 26747,
+    "triangles": 53490,
+    "watertight": true,
+    "volume_mm3": 1581.2931347209567,
+    "area_mm2": 1819.7233087035297,
+    "bbox_min": [
+      -5.773502826690674,
+      -5.0,
+      -55.0
+    ],
+    "bbox_max": [
+      5.773502826690674,
+      5.0,
+      4.0
+    ],
+    "center_of_mass": [
+      -0.0002543303567818939,
+      -0.00014912786240537596,
+      -21.17322077741496
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        53490
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 80
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "591a1a61c18c621d"
+}

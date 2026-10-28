@@ -57,10 +57,20 @@ calibration:
 
 # 04 restposes — stable resting poses
 restposes:
-  samples: 2000
-  min_probability: 0.02
-  measurable_tilt_deg: 15
-  validate_drops: 50
+  # trimesh computes exact (solid-angle) pose probabilities from the convex hull and centre of mass.
+  # com_samples > 1 additionally perturbs the centre of mass by com_sigma_mm and averages
+  # (about 0.08 s per sample and part; 1 = exact, deterministic, fast).
+  com_samples: 1
+  com_sigma_mm: 0.0
+  min_probability: 0.02      # poses below this are dropped, the rest renormalised
+  merge_tilt_deg: 1.0        # poses equal up to yaw/part symmetry within this tilt are merged
+  measurable_tilt_deg: 15    # screw poses with |axis tilt| <= this are "measurable"
+  validate_drops: 50         # drops per part for `compute --validate` (needs pybullet)
+  # Reweight pose categories (screws: side, standing_on_head, standing_on_tip; others: flat, edge).
+  # match: glob on part id, class or family; the last matching entry wins; weight 0 removes.
+  overrides: []
+  #  - {match: "DIN912*", category: standing_on_head, weight: 0}
+  #  - {match: "DIN125A*", category: edge, weight: 0}
 
 # 05 scenegen — BlenderProc rendering
 scenegen:

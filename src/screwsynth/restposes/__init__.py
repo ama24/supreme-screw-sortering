@@ -1,1 +1,1 @@
-"""restposes tool. Status: TODO (see docs/prompts)."""
+"""Tool 04: stable resting poses of every part on the plate."""

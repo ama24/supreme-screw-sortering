@@ -1,0 +1,102 @@
+{
+  "id": "TNUT_DROP_S6_M5",
+  "class_name": "TNUT_DROP_S6_M5",
+  "family": "TNUT_DROP",
+  "kind": "tnut",
+  "shape": "tnut_drop",
+  "size": "M5",
+  "length": null,
+  "pitch": 0.8,
+  "fully_threaded": null,
+  "dims": {
+    "length": 11.0,
+    "width": 6.0,
+    "height": 4.5,
+    "neck_width": 5.8,
+    "neck_height": 1.5,
+    "d": 5.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "plain_steel"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.25
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -2.25
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 2674,
+    "triangles": 5352,
+    "watertight": true,
+    "volume_mm3": 140.2903877650635,
+    "area_mm2": 265.112301392904,
+    "bbox_min": [
+      -5.5,
+      -3.0,
+      -2.25
+    ],
+    "bbox_max": [
+      5.5,
+      3.0,
+      2.25
+    ],
+    "center_of_mass": [
+      -0.000544934663903713,
+      0.0026932513046973557,
+      0.21860398825459493
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        5352
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 88
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "c83cdc8bda9ed6ef"
+}

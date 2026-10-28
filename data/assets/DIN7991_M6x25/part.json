@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M6x25",
+  "class_name": "DIN7991_M6",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M6",
+  "length": 25.0,
+  "pitch": 1.0,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 12.0,
+    "k": 3.3,
+    "s": 4.0,
+    "t": 2.5,
+    "b": 24.0,
+    "full_thread_max_length": 40.0,
+    "d": 6.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 25.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        3.3
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -21.7
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 6.0,
+    "tip": 3.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 10742,
+    "triangles": 21480,
+    "watertight": true,
+    "volume_mm3": 687.8219472443488,
+    "area_mm2": 892.6003743861052,
+    "bbox_min": [
+      -6.0,
+      -6.0,
+      -21.700000762939453
+    ],
+    "bbox_max": [
+      6.0,
+      6.0,
+      3.299999952316284
+    ],
+    "center_of_mass": [
+      0.0008257145302011475,
+      -0.0009179290810415727,
+      -7.140603931422519
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        21480
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "08bfc58b7a107391"
+}

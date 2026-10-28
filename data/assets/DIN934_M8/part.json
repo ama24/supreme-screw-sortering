@@ -1,0 +1,107 @@
+{
+  "id": "DIN934_M8",
+  "class_name": "DIN934_M8",
+  "family": "DIN934",
+  "kind": "nut",
+  "shape": "hex_nut",
+  "size": "M8",
+  "length": null,
+  "pitch": 1.25,
+  "fully_threaded": null,
+  "dims": {
+    "s": 13.0,
+    "m": 6.8,
+    "e": 14.38,
+    "d": 8.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel",
+    "brass",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        3.4
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -3.4
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 2864,
+    "triangles": 5728,
+    "watertight": true,
+    "volume_mm3": 683.2898673603173,
+    "area_mm2": 706.5720061070435,
+    "bbox_min": [
+      -7.505553722381592,
+      -6.5,
+      -3.4000000953674316
+    ],
+    "bbox_max": [
+      7.505553722381592,
+      6.5,
+      3.4000000953674316
+    ],
+    "center_of_mass": [
+      0.004666483197578217,
+      0.007104471494988616,
+      -4.6352695997151845e-06
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        5728
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 20
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "89c7695cdad9ddfa"
+}

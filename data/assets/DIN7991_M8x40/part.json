@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M8x40",
+  "class_name": "DIN7991_M8",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M8",
+  "length": 40.0,
+  "pitch": 1.25,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 16.0,
+    "k": 4.4,
+    "s": 5.0,
+    "t": 3.5,
+    "b": 28.0,
+    "full_thread_max_length": 45.0,
+    "d": 8.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 40.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        4.4
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -35.6
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 8.0,
+    "tip": 4.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 14022,
+    "triangles": 28040,
+    "watertight": true,
+    "volume_mm3": 1925.883197634903,
+    "area_mm2": 1847.2082976331942,
+    "bbox_min": [
+      -8.0,
+      -8.0,
+      -35.599998474121094
+    ],
+    "bbox_max": [
+      8.0,
+      8.0,
+      4.400000095367432
+    ],
+    "center_of_mass": [
+      0.0012173281074116106,
+      0.0002125354366577181,
+      -12.720218150432437
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        28040
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "d1e6106511433cf6"
+}
