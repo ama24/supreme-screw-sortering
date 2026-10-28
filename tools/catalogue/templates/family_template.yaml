@@ -1,0 +1,30 @@
+# Template for `screwsynth-catalogue add-family --from-template <this file>`.
+# Copy this file, rename the family and fill in your values. A template can hold several
+# families. Everything below "families:" has the same format as in configs/catalogue.yaml.
+#
+# This example shows the STEP route (source: step): the geometry comes from vendor CAD files
+# instead of parametric dimensions. Tool 02 (partgen) converts the STEP files to meshes.
+# For screws, "step" is keyed by length; each entry gives the file and the three keypoints
+# (head_top, bearing, tip) in the part's local frame in mm (axis +z, bearing face at z = 0).
+# For a parametric family instead, set "shape" (socket_cap, hex, button, countersunk, hex_nut,
+# nyloc_nut, washer, tnut_slide, tnut_drop) and give "dims" per size like the shipped families.
+families:
+  EXAMPLESTEP:
+    title: Example screw family built from STEP files
+    standard: vendor CAD
+    kind: screw
+    source: step
+    nominal_length: bearing_to_tip
+    enabled: false
+    verified: false
+    dims_source: vendor STEP files
+    finishes:
+      zinc_clear: all
+    sizes:
+      M4:
+        pitch: 0.7
+        lengths: [12]
+        step:
+          12:
+            path: data/step/example_M4x12.step
+            keypoints: {head_top: [0, 0, 4.0], bearing: [0, 0, 0], tip: [0, 0, -12.0]}

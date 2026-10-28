@@ -22,7 +22,8 @@ def _json_default(obj: Any) -> Any:
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serialisable")
 
 
-def _atomic_write_text(path: PathLike, text: str) -> None:
+def write_text(path: PathLike, text: str) -> None:
+    """Write a text file atomically (UTF-8, LF line endings), creating parent directories."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
@@ -42,7 +43,7 @@ def read_json(path: PathLike) -> Any:
 
 def write_json(path: PathLike, data: Any, indent: int = 2) -> None:
     text = json.dumps(data, indent=indent, default=_json_default, ensure_ascii=False)
-    _atomic_write_text(path, text + "\n")
+    write_text(path, text + "\n")
 
 
 def read_yaml(path: PathLike) -> Any:
@@ -57,4 +58,4 @@ def write_yaml(path: PathLike, data: Any) -> None:
     import yaml
 
     text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True, default_flow_style=False)
-    _atomic_write_text(path, text)
+    write_text(path, text)

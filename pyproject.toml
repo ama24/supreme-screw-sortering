@@ -15,15 +15,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-catalogue = ["ruamel.yaml>=0.18", "pydantic>=2.5"]
+catalogue = ["ruamel.yaml>=0.18"]
 partgen = ["numpy>=1.24", "trimesh>=4.0"]
 calib = ["opencv-contrib-python>=4.8"]
 train = ["ultralytics>=8.3"]
-dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5"]
+dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5", "ruamel.yaml>=0.18"]
 
 [project.scripts]
-# Tool entry points are added by each tool's PR, e.g.
-# screwsynth-catalogue = "screwsynth.catalogue.cli:main"
+screwsynth-catalogue = "screwsynth.catalogue.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/screwsynth"]

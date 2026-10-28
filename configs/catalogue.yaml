@@ -1,3 +1,403 @@
-# Part catalogue. This is a placeholder; tool 01 (catalogue) fills it in.
-# See docs/prompts/01_catalogue.txt.
-families: {}
+# screw-synth part catalogue: the single source of truth for every part a dataset can contain.
+#
+# Layout
+#   finishes:  every visual finish (never a class). material: metal | plastic.
+#   families:  one entry per standard (DIN912, DIN934, ...). Each family holds its metadata,
+#              the finishes it is sold in, and a "sizes" table with the dimensions per size
+#              (standard symbols, mm). Screws also list their standard lengths per size.
+#   rules:     ordered enable/disable overrides, written by `screwsynth-catalogue enable|disable`.
+# The flat part list (family x size x length) is generated in code, up to
+# catalogue.max_length_mm in configs/config.yaml. Part ids follow CLAUDE.md, e.g. DIN912_M4x16.
+#
+# How to...
+#   add a length      screwsynth-catalogue add-length DIN912 M4 18   (or edit the lengths list)
+#                     put a length in "uncommon" to keep it but mark it common: false.
+#   add a size        copy a size block inside the family and change the values.
+#   add a family      screwsynth-catalogue add-family --from-template my_family.yaml
+#                     (see tools/catalogue/templates/family_template.yaml; STEP-based parts too)
+#   add a finish      add it under "finishes", then list it in the families that use it.
+#   enable/disable    screwsynth-catalogue enable|disable <part id | class | family | size | glob>
+# Then run `screwsynth-catalogue validate` and `screwsynth-catalogue classes`.
+#
+# Values marked uncertain are listed in tools/catalogue/VERIFY.md. Every entry is verified: false
+# until checked with calipers. "d" (nominal diameter) is filled in from the size automatically.
+
+version: 1
+
+finishes:
+  black_oxide: {label: Black oxide, material: metal}
+  zinc_clear: {label: Zinc plated clear/blue, material: metal}
+  zinc_yellow: {label: Zinc plated yellow, material: metal}
+  stainless_a2: {label: Stainless steel A2, material: metal}
+  stainless_a4: {label: Stainless steel A4, material: metal}
+  plain_steel: {label: Plain steel, material: metal}
+  brass: {label: Brass, material: metal}
+  nylon_white: {label: Nylon white/natural, material: plastic}
+  nylon_black: {label: Nylon black, material: plastic}
+
+families:
+  # ---------------------------------------------------------------- screws
+  DIN912:
+    title: Hexagon socket head cap screw
+    standard: DIN 912 / ISO 4762
+    kind: screw
+    shape: socket_cap
+    nominal_length: bearing_to_tip
+    enabled: true
+    verified: false
+    dims_source: ISO 4762:2004 table 1 (dk/k max, s nominal, t min, b reference)
+    # dk head diameter, k head height, s socket across flats, t socket depth, b thread length,
+    # ds shank diameter (= d if omitted); lengths <= full_thread_max_length are threaded to the head
+    finishes:
+      black_oxide: all
+      zinc_clear: all
+      zinc_yellow: [M4, M5, M6, M8, M10]
+      stainless_a2: all
+      stainless_a4: all
+      nylon_white: [M2.5, M3, M4, M5, M6]
+      nylon_black: [M2.5, M3, M4, M5, M6]
+    sizes:
+      M2:
+        pitch: 0.4
+        dims: {dk: 3.8, k: 2.0, s: 1.5, t: 1.0, b: 16, full_thread_max_length: 16}
+        lengths: [3, 4, 5, 6, 8, 10, 12, 16, 20]
+      M2.5:
+        pitch: 0.45
+        dims: {dk: 4.5, k: 2.5, s: 2.0, t: 1.1, b: 17, full_thread_max_length: 20}
+        lengths: [4, 5, 6, 8, 10, 12, 16, 20, 25]
+      M3:
+        pitch: 0.5
+        dims: {dk: 5.5, k: 3.0, s: 2.5, t: 1.3, b: 18, full_thread_max_length: 20}
+        lengths: [5, 6, 8, 10, 12, 16, 20, 25, 30]
+      M4:
+        pitch: 0.7
+        dims: {dk: 7.0, k: 4.0, s: 3.0, t: 2.0, b: 20, full_thread_max_length: 25}
+        lengths: [6, 8, 10, 12, 16, 20, 25, 30, 35, 40]
+      M5:
+        pitch: 0.8
+        dims: {dk: 8.5, k: 5.0, s: 4.0, t: 2.5, b: 22, full_thread_max_length: 25}
+        lengths: [8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50]
+        uncommon: [45]
+      M6:
+        pitch: 1.0
+        dims: {dk: 10.0, k: 6.0, s: 5.0, t: 3.0, b: 24, full_thread_max_length: 30}
+        lengths: [10, 12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+        uncommon: [55]
+      M8:
+        pitch: 1.25
+        dims: {dk: 13.0, k: 8.0, s: 6.0, t: 4.0, b: 28, full_thread_max_length: 35}
+        lengths: [12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80]
+        uncommon: [55, 65]
+      M10:
+        pitch: 1.5
+        dims: {dk: 16.0, k: 10.0, s: 8.0, t: 5.0, b: 32, full_thread_max_length: 40}
+        lengths: [16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80, 90, 100]
+        uncommon: [55, 65]
+
+  DIN933:
+    title: Hexagon head screw, fully threaded
+    standard: DIN 933 / ISO 4017
+    kind: screw
+    shape: hex
+    nominal_length: bearing_to_tip
+    enabled: true
+    verified: false
+    dims_source: ISO 4017:2014 (s nominal, k nominal, e min, dw min, c max)
+    # s across flats, k head height, e across corners, dw washer-face diameter, c washer-face height
+    finishes:
+      black_oxide: [M4, M5, M6, M8, M10]
+      zinc_clear: all
+      zinc_yellow: [M5, M6, M8, M10]
+      stainless_a2: all
+      stainless_a4: all
+      plain_steel: all
+      brass: all
+      nylon_white: [M3, M4, M5, M6, M8]
+      nylon_black: [M3, M4, M5, M6, M8]
+    sizes:
+      M2:
+        pitch: 0.4
+        common: false
+        dims: {s: 4.0, k: 1.4, e: 4.32, dw: 3.07, c: 0.25}
+        lengths: [4, 5, 6, 8, 10, 12, 16, 20]
+      M2.5:
+        pitch: 0.45
+        common: false
+        dims: {s: 5.0, k: 1.7, e: 5.45, dw: 4.07, c: 0.25}
+        lengths: [5, 6, 8, 10, 12, 16, 20, 25]
+      M3:
+        pitch: 0.5
+        dims: {s: 5.5, k: 2.0, e: 6.01, dw: 4.57, c: 0.4}
+        lengths: [5, 6, 8, 10, 12, 16, 20, 25, 30]
+      M4:
+        pitch: 0.7
+        dims: {s: 7.0, k: 2.8, e: 7.66, dw: 5.88, c: 0.4}
+        lengths: [6, 8, 10, 12, 16, 20, 25, 30, 35, 40]
+      M5:
+        pitch: 0.8
+        dims: {s: 8.0, k: 3.5, e: 8.79, dw: 6.88, c: 0.5}
+        lengths: [8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50]
+        uncommon: [45]
+      M6:
+        pitch: 1.0
+        dims: {s: 10.0, k: 4.0, e: 11.05, dw: 8.88, c: 0.5}
+        lengths: [8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+        uncommon: [55]
+      M8:
+        pitch: 1.25
+        dims: {s: 13.0, k: 5.3, e: 14.38, dw: 11.63, c: 0.6}
+        lengths: [10, 12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80]
+        uncommon: [55, 65]
+      M10:
+        pitch: 1.5
+        dims: {s: 16.0, k: 6.4, e: 17.77, dw: 14.63, c: 0.6}
+        lengths: [16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80, 90, 100]
+        uncommon: [55, 65]
+
+  ISO7380:
+    title: Button head socket screw
+    standard: ISO 7380-1
+    kind: screw
+    shape: button
+    nominal_length: bearing_to_tip
+    enabled: true
+    verified: false
+    dims_source: ISO 7380-1:2011 (dk/k max, s nominal, t min); lengths from trade ranges
+    # dk head diameter, k head height, s socket across flats, t socket depth
+    finishes:
+      black_oxide: all
+      zinc_clear: all
+      stainless_a2: all
+      stainless_a4: all
+    sizes:
+      M3:
+        pitch: 0.5
+        dims: {dk: 5.7, k: 1.65, s: 2.0, t: 1.04}
+        lengths: [4, 5, 6, 8, 10, 12, 16, 20, 25, 30]
+        uncommon: [25, 30]
+      M4:
+        pitch: 0.7
+        dims: {dk: 7.6, k: 2.2, s: 2.5, t: 1.3}
+        lengths: [5, 6, 8, 10, 12, 16, 20, 25, 30, 35, 40]
+        uncommon: [35, 40]
+      M5:
+        pitch: 0.8
+        dims: {dk: 9.5, k: 2.75, s: 3.0, t: 1.56}
+        lengths: [6, 8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50]
+        uncommon: [45, 50]
+      M6:
+        pitch: 1.0
+        dims: {dk: 10.5, k: 3.3, s: 4.0, t: 2.08}
+        lengths: [8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50, 60]
+        uncommon: [45, 50, 60]
+      M8:
+        pitch: 1.25
+        dims: {dk: 14.0, k: 4.4, s: 5.0, t: 2.6}
+        lengths: [10, 12, 16, 20, 25, 30, 35, 40, 45, 50]
+        uncommon: [45, 50]
+      M10:
+        pitch: 1.5
+        dims: {dk: 17.5, k: 5.5, s: 6.0, t: 3.12}
+        lengths: [16, 20, 25, 30, 35, 40, 45, 50]
+        uncommon: [45, 50]
+
+  DIN7991:
+    title: Countersunk hexagon socket screw
+    standard: DIN 7991 / ISO 10642
+    kind: screw
+    shape: countersunk
+    nominal_length: head_top_to_tip
+    enabled: true
+    verified: false
+    dims_source: DIN 7991:1986 (dk/k max, s nominal, t min, b reference)
+    # dk head diameter, k head height, s socket across flats, t socket depth, angle countersink,
+    # b thread length; lengths <= full_thread_max_length are threaded to the head
+    common_dims: {angle: 90}
+    finishes:
+      black_oxide: all
+      zinc_clear: all
+      stainless_a2: all
+      stainless_a4: all
+    sizes:
+      M3:
+        pitch: 0.5
+        dims: {dk: 6.0, k: 1.7, s: 2.0, t: 1.2, b: 18, full_thread_max_length: 30}
+        lengths: [6, 8, 10, 12, 16, 20, 25, 30]
+      M4:
+        pitch: 0.7
+        dims: {dk: 8.0, k: 2.3, s: 2.5, t: 1.8, b: 20, full_thread_max_length: 30}
+        lengths: [8, 10, 12, 16, 20, 25, 30, 35, 40]
+        uncommon: [35]
+      M5:
+        pitch: 0.8
+        dims: {dk: 10.0, k: 2.8, s: 3.0, t: 2.3, b: 22, full_thread_max_length: 35}
+        lengths: [8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50]
+        uncommon: [45]
+      M6:
+        pitch: 1.0
+        dims: {dk: 12.0, k: 3.3, s: 4.0, t: 2.5, b: 24, full_thread_max_length: 40}
+        lengths: [8, 10, 12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+        uncommon: [55]
+      M8:
+        pitch: 1.25
+        dims: {dk: 16.0, k: 4.4, s: 5.0, t: 3.5, b: 28, full_thread_max_length: 45}
+        lengths: [10, 12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80]
+        uncommon: [55, 65]
+      M10:
+        pitch: 1.5
+        dims: {dk: 20.0, k: 5.5, s: 6.0, t: 4.4, b: 32, full_thread_max_length: 50}
+        lengths: [12, 16, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 80, 90, 100]
+        uncommon: [55, 65]
+
+  # ---------------------------------------------------------------- nuts
+  DIN934:
+    title: Hexagon nut
+    standard: DIN 934 / ISO 4032
+    kind: nut
+    shape: hex_nut
+    enabled: true
+    verified: false
+    dims_source: ISO 4032:2012 (s nominal, m max, e min)
+    # s across flats, m height, e across corners
+    finishes:
+      black_oxide: all
+      zinc_clear: all
+      zinc_yellow: all
+      stainless_a2: all
+      stainless_a4: all
+      plain_steel: all
+      brass: all
+      nylon_white: [M2, M2.5, M3, M4, M5, M6, M8]
+      nylon_black: [M2, M2.5, M3, M4, M5, M6, M8]
+    sizes:
+      M2: {pitch: 0.4, dims: {s: 4.0, m: 1.6, e: 4.32}}
+      M2.5: {pitch: 0.45, dims: {s: 5.0, m: 2.0, e: 5.45}}
+      M3: {pitch: 0.5, dims: {s: 5.5, m: 2.4, e: 6.01}}
+      M4: {pitch: 0.7, dims: {s: 7.0, m: 3.2, e: 7.66}}
+      M5: {pitch: 0.8, dims: {s: 8.0, m: 4.7, e: 8.79}}
+      M6: {pitch: 1.0, dims: {s: 10.0, m: 5.2, e: 11.05}}
+      M8: {pitch: 1.25, dims: {s: 13.0, m: 6.8, e: 14.38}}
+      M10: {pitch: 1.5, dims: {s: 16.0, m: 8.4, e: 17.77}}
+
+  DIN985:
+    title: Prevailing torque hexagon nut with nylon insert (nyloc)
+    standard: DIN 985 / ISO 10511
+    kind: nut
+    shape: nyloc_nut
+    enabled: true
+    verified: false
+    dims_source: DIN 985:1987 (s nominal, h max, e min); m = metal part height, estimated
+    # s across flats, h total height, m height of the metal part (below the nylon insert), e across corners
+    finishes:
+      black_oxide: all
+      zinc_clear: all
+      stainless_a2: all
+      stainless_a4: all
+    sizes:
+      M3: {pitch: 0.5, dims: {s: 5.5, h: 4.0, m: 2.9, e: 6.01}}
+      M4: {pitch: 0.7, dims: {s: 7.0, h: 5.0, m: 3.6, e: 7.66}}
+      M5: {pitch: 0.8, dims: {s: 8.0, h: 5.0, m: 3.8, e: 8.79}}
+      M6: {pitch: 1.0, dims: {s: 10.0, h: 6.0, m: 4.6, e: 11.05}}
+      M8: {pitch: 1.25, dims: {s: 13.0, h: 8.0, m: 6.2, e: 14.38}}
+      M10: {pitch: 1.5, dims: {s: 16.0, h: 10.0, m: 7.8, e: 17.77}}
+
+  # ---------------------------------------------------------------- washers
+  DIN125A:
+    title: Plain washer, form A
+    standard: DIN 125-A / ISO 7089
+    kind: washer
+    shape: washer
+    enabled: true
+    verified: false
+    dims_source: ISO 7089:2000 (d1 min, d2 max, h nominal)
+    # d1 inner diameter, d2 outer diameter, h thickness
+    finishes:
+      black_oxide: all
+      zinc_clear: all
+      zinc_yellow: all
+      stainless_a2: all
+      stainless_a4: all
+      plain_steel: all
+      brass: all
+      nylon_white: [M2, M2.5, M3, M4, M5, M6, M8]
+      nylon_black: [M2, M2.5, M3, M4, M5, M6, M8]
+    sizes:
+      M2: {dims: {d1: 2.2, d2: 5.0, h: 0.3}}
+      M2.5: {dims: {d1: 2.7, d2: 6.0, h: 0.5}}
+      M3: {dims: {d1: 3.2, d2: 7.0, h: 0.5}}
+      M4: {dims: {d1: 4.3, d2: 9.0, h: 0.8}}
+      M5: {dims: {d1: 5.3, d2: 10.0, h: 1.0}}
+      M6: {dims: {d1: 6.4, d2: 12.0, h: 1.6}}
+      M8: {dims: {d1: 8.4, d2: 16.0, h: 1.6}}
+      M10: {dims: {d1: 10.5, d2: 20.0, h: 2.0}}
+
+  DIN9021:
+    title: Plain washer, large outer diameter
+    standard: DIN 9021 / ISO 7093-1
+    kind: washer
+    shape: washer
+    enabled: true
+    verified: false
+    dims_source: ISO 7093-1:2000 (d1 min, d2 max, h nominal)
+    # d1 inner diameter, d2 outer diameter, h thickness
+    finishes:
+      zinc_clear: all
+      stainless_a2: all
+      stainless_a4: all
+      plain_steel: all
+      nylon_white: [M3, M4, M5, M6]
+    sizes:
+      M3: {dims: {d1: 3.2, d2: 9.0, h: 0.8}}
+      M4: {dims: {d1: 4.3, d2: 12.0, h: 1.0}}
+      M5: {dims: {d1: 5.3, d2: 15.0, h: 1.2}}
+      M6: {dims: {d1: 6.4, d2: 18.0, h: 1.6}}
+      M8: {dims: {d1: 8.4, d2: 24.0, h: 2.0}}
+      M10: {dims: {d1: 10.5, d2: 30.0, h: 2.5}}
+
+  # ---------------------------------------------------------------- T-nuts (not standardised)
+  # Size keys are S<slot>_<thread>. Outline: length along the slot, width across the slot,
+  # height total, neck_width/neck_height of the part that sits in the slot opening.
+  TNUT_SLIDE:
+    title: Slide-in T-nut for aluminium extrusion
+    standard: none (vendor-typical)
+    kind: tnut
+    shape: tnut_slide
+    tnut_kind: SLIDE
+    enabled: true
+    verified: false
+    dims_source: vendor-typical, measure your own
+    finishes:
+      zinc_clear: all
+      plain_steel: all
+      stainless_a2: all
+    sizes:
+      S6_M3: {pitch: 0.5, dims: {length: 10.0, width: 10.0, height: 4.0, neck_width: 5.8, neck_height: 1.5}}
+      S6_M4: {pitch: 0.7, dims: {length: 10.0, width: 10.0, height: 4.0, neck_width: 5.8, neck_height: 1.5}}
+      S6_M5: {pitch: 0.8, dims: {length: 10.0, width: 10.0, height: 4.0, neck_width: 5.8, neck_height: 1.5}}
+      S8_M4: {pitch: 0.7, dims: {length: 12.0, width: 15.0, height: 6.0, neck_width: 7.8, neck_height: 2.0}}
+      S8_M5: {pitch: 0.8, dims: {length: 12.0, width: 15.0, height: 6.0, neck_width: 7.8, neck_height: 2.0}}
+      S8_M6: {pitch: 1.0, dims: {length: 12.0, width: 15.0, height: 6.0, neck_width: 7.8, neck_height: 2.0}}
+
+  TNUT_DROP:
+    title: Drop-in (roll-in / hammer-head) T-nut for aluminium extrusion
+    standard: none (vendor-typical)
+    kind: tnut
+    shape: tnut_drop
+    tnut_kind: DROP
+    enabled: true
+    verified: false
+    dims_source: vendor-typical, measure your own
+    finishes:
+      zinc_clear: all
+      plain_steel: all
+    sizes:
+      S6_M3: {pitch: 0.5, dims: {length: 11.0, width: 6.0, height: 4.5, neck_width: 5.8, neck_height: 1.5}}
+      S6_M4: {pitch: 0.7, dims: {length: 11.0, width: 6.0, height: 4.5, neck_width: 5.8, neck_height: 1.5}}
+      S6_M5: {pitch: 0.8, dims: {length: 11.0, width: 6.0, height: 4.5, neck_width: 5.8, neck_height: 1.5}}
+      S8_M4: {pitch: 0.7, dims: {length: 16.0, width: 8.0, height: 6.5, neck_width: 7.8, neck_height: 2.0}}
+      S8_M5: {pitch: 0.8, dims: {length: 16.0, width: 8.0, height: 6.5, neck_width: 7.8, neck_height: 2.0}}
+      S8_M6: {pitch: 1.0, dims: {length: 16.0, width: 8.0, height: 6.5, neck_width: 7.8, neck_height: 2.0}}
+
+# Ordered overrides; the last matching rule wins. Patterns match part id, class name, family or
+# size (shell-style globs allowed). Managed by `screwsynth-catalogue enable|disable`.
+rules: []
