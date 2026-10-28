@@ -124,10 +124,14 @@ Runs are **resumable and deterministic**:
 2. **Layer 1 (on the plate).** Each part aims at a point drawn around a clump centre. If that spot is taken, it
    slides outward until it touches its neighbours, or nearly touches them (`contact_gap_mm`). A share of parts
    (`loose_fraction`) lands anywhere instead.
-3. **Layer 2 (on top).** A share of parts (`overlap_probability`, drawn per scene) is placed over layer-1
-   parts and dropped onto them by the physics:
-   - their centre must lie over a part at most `max_support_mm` tall, so nothing balances on a standing screw;
-   - tops never overlap each other, so at most two layers form (some superposition, no piles).
+3. **Stacks (on top).** A share of parts (`overlap_probability`, drawn per scene) is placed over parts
+   already lying there and dropped onto them by the physics:
+   - its layer is one more than the highest part under it, up to `max_layers` (default 3; 1 = nothing on
+     top of another part);
+   - it starts just above the stack under it (`physics.stack_clearance_mm`), so nothing starts inside
+     another part, and all parts above layer 1 settle together;
+   - its centre must lie over a part, and every part under it must be at most `max_support_mm` tall, so
+     nothing balances on a standing screw.
 4. **Lip.** Invisible walls stand `lip.outside_mm` outside the visible area. Footprints may reach up to the lip
    as long as their centre is inside the area, so parts pushed against it are cut by the image border, as in a
    real photo.
@@ -197,7 +201,7 @@ Per object:
 |---|---|---|
 | `clumped_objects`, `objects`, `few_objects`, `crowded_objects` | [30,150], [15,40], [1,5], [30,50] | Objects per scene type |
 | `clumped_fraction`, `few_fraction`, `crowded_fraction` | 0.6, 0.1, 0.1 | Fractions of scene types (the rest: normal) |
-| `clumped.*` | 1–3 clumps, spread 4–15 mm, loose 0.1, edge 0.3, on top 0.1–0.35, gap 0–1 mm, support ≤ 12 mm | Clumped scenes |
+| `clumped.*` | 1–3 clumps, spread 4–15 mm, loose 0.1, edge 0.3, on top 0.1–0.4, gap 0–1 mm, support ≤ 12 mm, 3 layers | Clumped scenes |
 | `lip.*` | on, 2 mm outside, 6 mm high | Walls around the plate, just outside the frame |
 | `removal_steps` | [0, 3] | Parts removed one by one per layout (a photo after each) |
 | `on_plate_mm`, `occlusion_min_mm2` | 0.3, 0.5 | Lying on the plate; minimum covered area that counts as occlusion |
@@ -207,7 +211,7 @@ Per object:
 | `variants_per_layout`, `keypoint_window_px` | 1, 2 | Lighting variants and keypoint visibility window |
 | `nominal_camera.*` | 4.74 mm, 1.4 µm, 4608×2592, 300 mm | `--nominal-camera` |
 | `physics.*` | drop 0.05 mm, top clearance 0.5 mm, reach 20 mm, 0.4–1.5 s, 20 substeps/iters, friction 0.6, margin 0.05 mm | Settle |
-| `discard.*` | move 30 mm, stack 15 mm, below 1 mm | Post-settle rejection |
+| `discard.*` | move 30 mm, stack 25 mm, below 1 mm | Post-settle rejection |
 | `render.*` | OPTIX, 64 samples, threshold 0.02, OPTIX denoiser, scale 1.0, bounces 6/3/4/2, depth off | Cycles |
 | `preview.*` | 10 scenes, scale 0.25, 16 samples | `--preview` |
 | `plate.*` | thickness 1.75, grid 24, roughness, bump, line pitch, solid colours | Plate |

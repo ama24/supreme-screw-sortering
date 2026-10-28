@@ -71,7 +71,8 @@ class Placed:
     footprint: np.ndarray  # (N, 2) plate xy, CCW
     yaw: float
     xy: tuple[float, float]
-    layer: int = 1  # 1 = on the plate in its rest pose, 2 = dropped onto parts of layer 1
+    layer: int = 1  # 1 = on the plate in its rest pose, k > 1 = dropped onto parts of layer < k
+    base_z: float = 0.0  # top of the parts under it (mm): a dropped part starts above this
 
 
 def footprint(local_hull: np.ndarray, yaw: float, xy: Sequence[float]) -> np.ndarray:
@@ -154,10 +155,11 @@ class ClumpSettings:
     spread_mm: tuple[float, float] = (4.0, 15.0)  # radius scale of a clump (Gaussian sigma)
     loose_fraction: float = 0.1  # parts placed anywhere, away from the clumps
     edge_probability: float = 0.3  # chance a clump sits against the edge (lip) of the frame
-    overlap_probability: tuple[float, float] = (0.1, 0.35)  # per scene: share of parts on top
+    overlap_probability: tuple[float, float] = (0.1, 0.4)  # per scene: share of parts on top
     contact_gap_mm: tuple[float, float] = (0.0, 1.0)  # gap left when a part is slid into a clump
     give_up_after: int = 5  # consecutive parts that do not fit: the plate is full, stop
     max_support_mm: float = 12.0  # parts on top only land on parts at most this tall
+    max_layers: int = 3  # layers a stack may reach (1 = no part on top of another)
 
     @classmethod
     def from_config(cls, cfg: Mapping[str, Any] | None) -> ClumpSettings:
@@ -177,6 +179,7 @@ class ClumpSettings:
             contact_gap_mm=pair("contact_gap_mm", float),
             give_up_after=int(cfg.get("give_up_after", d.give_up_after)),
             max_support_mm=float(cfg.get("max_support_mm", d.max_support_mm)),
+            max_layers=int(cfg.get("max_layers", d.max_layers)),
         )
 
 
@@ -335,19 +338,22 @@ def place_clumped(
 
     Layer 1 parts lie on the plate in a rest pose: each one aims at a point drawn around a clump
     centre and, if that spot is taken, slides outward until it touches (or nearly touches) the
-    parts already there. A share of the parts is placed on top instead (layer 2): their footprint
-    overlaps layer-1 parts but no other layer-2 part, so at most two layers form, and the physics
-    settle drops them onto the parts below. Footprints must stay inside `bounds` (the lip around
-    the plate) and their centre inside `area` (the visible working area), so parts pushed against
-    the lip are cut by the image border like in a real photo.
+    parts already there. A share of the parts is placed on top instead: their footprint overlaps
+    parts already placed, their layer is one more than the highest of those (up to
+    st.max_layers), and base_z records the top of the stack under them, so the physics settle
+    drops them from just above it onto the parts below. Footprints must stay inside `bounds` (the
+    lip around the plate) and their centre inside `area` (the visible working area), so parts
+    pushed against the lip are cut by the image border like in a real photo.
 
-    heights (mm, per hull) keep parts on top off tall ones (a screw standing on its head): the
-    centre of a top part must lie over a layer-1 part at most st.max_support_mm tall.
+    heights (mm, per hull, in the chosen rest pose) give the stack heights and keep parts on top
+    off tall ones (a screw standing on its head): the centre of a top part must lie over a part,
+    and every part under it must be at most st.max_support_mm tall.
     """
     st = st or ClumpSettings()
     clumps = _clump_centres(area, st, rng)
     p_top = rng.uniform(*st.overlap_probability)
     index = _Index()
+    top_z: dict[int, float] = {}  # hull index -> top of that part once placed (mm)
     x0, y0, x1, y1 = area
     misses = 0
     diag = math.hypot(bounds[2] - bounds[0], bounds[3] - bounds[1])
@@ -356,8 +362,7 @@ def place_clumped(
             break
         before = len(index.placed)
         loose = rng.random() < st.loose_fraction
-        has_floor = any(p.layer == 1 for p in index.placed)
-        top = not loose and has_floor and rng.random() < p_top
+        top = not loose and bool(index.placed) and st.max_layers > 1 and rng.random() < p_top
         centre, spread = clumps[rng.randrange(len(clumps))]
         for _ in range(max_tries):
             yaw = rng.uniform(0, 2 * math.pi)
@@ -369,14 +374,17 @@ def place_clumped(
                 poly = footprint(hull, yaw, target)
                 if not (inside_area(poly, bounds) and _centre_inside(poly, area)):
                     continue
-                near = index.near(poly, 0.0)
-                below = [p for p in near if p.layer == 1 and separation(poly, p.footprint) < -0.5]
-                clear_top = all(separation(poly, p.footprint) >= 0 for p in near if p.layer == 2)
+                below = [p for p in index.near(poly, 0.0) if separation(poly, p.footprint) < -0.5]
+                if not below:
+                    continue
+                layer = 1 + max(p.layer for p in below)
                 low = heights is None or all(heights[p.index] <= st.max_support_mm for p in below)
-                centre_c = poly.mean(axis=0)
-                supported = any(_point_in_convex(centre_c, p.footprint) for p in below)
-                if below and clear_top and low and supported:
-                    index.add(Placed(i, poly, yaw, (float(target[0]), float(target[1])), 2))
+                supported = any(_point_in_convex(poly.mean(axis=0), p.footprint) for p in below)
+                if layer <= st.max_layers and low and supported:
+                    base = max(top_z[p.index] for p in below)
+                    xy_t = (float(target[0]), float(target[1]))
+                    index.add(Placed(i, poly, yaw, xy_t, layer, base))
+                    top_z[i] = base + (heights[i] if heights is not None else 0.0)
                     break
                 continue
             gap = rng.uniform(*st.contact_gap_mm) if not loose else max(st.contact_gap_mm[1], 1.0)
@@ -390,6 +398,7 @@ def place_clumped(
             poly = footprint(hull, yaw, xy)
             if inside_area(poly, bounds) and _centre_inside(poly, area):
                 index.add(Placed(i, poly, yaw, (float(xy[0]), float(xy[1])), 1))
+                top_z[i] = heights[i] if heights is not None else 0.0
                 break
         misses = 0 if len(index.placed) > before else misses + 1
     return index.placed
