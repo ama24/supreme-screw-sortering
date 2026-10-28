@@ -37,11 +37,15 @@ def _convert_step(path: Path) -> trimesh.Trimesh | None:
         import cadquery as cq  # type: ignore[import-not-found]
     except ImportError:
         return None
-    shape = cq.importers.importStep(str(path))
-    with tempfile.TemporaryDirectory() as tmp:
-        out = Path(tmp) / "part.stl"
-        cq.exporters.export(shape, str(out), tolerance=0.005, angularTolerance=0.1)
-        return trimesh.load_mesh(out, process=True)
+    try:
+        shape = cq.importers.importStep(str(path))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "part.stl"
+            cq.exporters.export(shape, str(out), tolerance=0.005, angularTolerance=0.1)
+            return trimesh.load_mesh(out, process=True)
+    except Exception as exc:  # OCCT raises plain ValueError/RuntimeError on unreadable files
+        log.warning("cadquery could not convert %s (%s)", path.name, exc)
+        return None
 
 
 def load_source_mesh(path: Path) -> trimesh.Trimesh:
@@ -58,8 +62,8 @@ def load_source_mesh(path: Path) -> trimesh.Trimesh:
                 log.info("using %s (pre-converted mesh) for %s", alt.name, path.name)
                 return trimesh.load_mesh(alt, process=True)
         raise BuildError(
-            f"cannot convert {path}: install cadquery (pip install cadquery) or export it to STL "
-            f"from your CAD program as {path.with_suffix('.stl').name} next to the STEP file"
+            f"cannot convert {path}: cadquery is missing or failed to read it (pip install "
+            f"cadquery), and there is no {path.with_suffix('.stl').name} next to it to fall back on"
         )
     raise BuildError(f"unsupported or missing CAD file: {path}")
 
