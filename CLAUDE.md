@@ -32,7 +32,8 @@ the tool you are working on before changing it.
   NO aluminium and no anodised colours. Finish is a visual variation only, never a class.
   Magnetic vs non-magnetic is NOT distinguished.
 - Arrangement: a handful of parts thrown onto the plate and spread by hand: clumps, parts
-  touching, some parts lying on top of others (mostly a single layer, no real piles). A lip just
+  touching, some parts lying on top of others in small stacks (up to scenegen.clumped.max_layers,
+  default 3; no tall piles). A lip just
   outside the camera frame stops parts, so parts are often cut by the image border.
 - Operation: a picker removes one part at a time and a new photo is taken after every removal.
 

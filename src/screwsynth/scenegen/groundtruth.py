@@ -132,7 +132,7 @@ def discard_reason(
     max_move_mm: float = 15.0,
     below_plate_mm: float = 1.0,
     allow_stacked: bool = False,
-    max_stack_mm: float = 15.0,
+    max_stack_mm: float = 25.0,
 ) -> str | None:
     """Why an object must be discarded after the physics settle (None = keep).
 

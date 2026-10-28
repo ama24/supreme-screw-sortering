@@ -477,3 +477,33 @@ def test_discard_allows_stacking():
     T[:3, 3] = [100, 100, 3.0]  # resting 3 mm up, on another part
     assert "stacked" in discard_reason(T, T, verts, AREA)
     assert discard_reason(T, T, verts, AREA, allow_stacked=True) is None
+
+
+def test_clumped_multilayer_stacks():
+    hulls = _mixed_hulls(90)
+    heights = [3.0 + (i % 4) for i in range(len(hulls))]  # every part low enough to carry others
+    st = ClumpSettings(overlap_probability=(0.6, 0.6), max_layers=3)
+    placed = place_clumped(hulls, AREA, BOUNDS, random.Random(2), st, heights=heights)
+    by_index = {p.index: p for p in placed}
+    layers = Counter(p.layer for p in placed)
+    assert layers[3] > 0 and max(layers) == 3
+    top = {}
+    for p in placed:  # placement order: parts below are always placed first
+        if p.layer == 1:
+            assert p.base_z == 0.0
+        else:
+            below = [
+                q
+                for q in placed
+                if q is not p and q.index in top and separation(p.footprint, q.footprint) < -0.5
+            ]
+            assert max(q.layer for q in below) == p.layer - 1
+            assert p.base_z == pytest.approx(max(top[q.index] for q in below))
+        top[p.index] = p.base_z + heights[p.index]
+    assert all(by_index[i].layer >= 1 for i in by_index)
+
+
+def test_clumped_single_layer_when_max_layers_is_one():
+    st = ClumpSettings(overlap_probability=(0.9, 0.9), max_layers=1)
+    placed = place_clumped(_mixed_hulls(60), AREA, BOUNDS, random.Random(4), st)
+    assert {p.layer for p in placed} == {1}

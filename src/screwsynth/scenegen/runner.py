@@ -115,17 +115,6 @@ def _yaw_matrix(yaw: float, xy: tuple[float, float], lift: float) -> np.ndarray:
     return T
 
 
-def _height_below(pl, placed, chosen, parts) -> float:
-    """Top of the highest layer-1 part under a layer-2 footprint (mm): where the drop starts."""
-    top = 0.0
-    for other in placed:
-        if other.layer != 1 or separation(pl.footprint, other.footprint) >= 0:
-            continue
-        info, _, pose_i = chosen[other.index]
-        top = max(top, parts[info.id].heights[pose_i])
-    return top
-
-
 def _px_per_mm(cam, area) -> float:
     """Image scale at the centre of the working area (pixels per mm on the plate)."""
     cx, cy = (area[0] + area[2]) / 2, (area[1] + area[3]) / 2
@@ -181,7 +170,7 @@ def _settle(instances, objs, parts, area, physics, discard_cfg, dropped, bs, s):
             float(discard_cfg.get("max_move_mm", 30.0)),
             float(discard_cfg.get("below_plate_mm", 1.0)),
             allow_stacked=True,
-            max_stack_mm=float(discard_cfg.get("max_stack_mm", 15.0)),
+            max_stack_mm=float(discard_cfg.get("max_stack_mm", 25.0)),
         )
         if why:
             dropped.append({"part_id": inst["info"].id, "reason": why})
@@ -349,17 +338,15 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
             # parts lying on the plate are already in an exact rest pose: fixed obstacles. Only
             # parts dropped on top (and crowded scenes, where footprints overlap) move, and only
             # parts within reach of a moving one need a collision body at all.
-            moving = [pl for pl in placed if pl.layer == 2 or plan.kind == "crowded"]
+            moving = [pl for pl in placed if pl.layer > 1 or plan.kind == "crowded"]
             reach = float(physics.get("collision_reach_mm", 20.0))
             for pl in placed:
                 info, finish, pose_i = chosen[pl.index]
                 part = parts[info.id]
-                active = pl.layer == 2 or plan.kind == "crowded"
+                active = pl.layer > 1 or plan.kind == "crowded"
                 body = active or any(_near(pl, m, reach) for m in moving)
-                if pl.layer == 2:
-                    lift = _height_below(pl, placed, chosen, parts) + float(
-                        physics.get("stack_clearance_mm", 0.5)
-                    )
+                if pl.layer > 1:  # dropped from just above the stack under it
+                    lift = pl.base_z + float(physics.get("stack_clearance_mm", 0.5))
                 else:
                     lift = float(physics.get("drop_mm", 0.05)) if active else 0.0
                 T0 = _yaw_matrix(pl.yaw, pl.xy, lift) @ np.asarray(
