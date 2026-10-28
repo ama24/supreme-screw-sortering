@@ -1,0 +1,110 @@
+{
+  "id": "DIN912_M8x65",
+  "class_name": "DIN912_M8",
+  "family": "DIN912",
+  "kind": "screw",
+  "shape": "socket_cap",
+  "size": "M8",
+  "length": 65.0,
+  "pitch": 1.25,
+  "fully_threaded": false,
+  "dims": {
+    "dk": 13.0,
+    "k": 8.0,
+    "s": 6.0,
+    "t": 4.0,
+    "b": 28.0,
+    "full_thread_max_length": 35.0,
+    "d": 8.0,
+    "ds": 8.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 65.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        8.0
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -65.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 6.5,
+    "tip": 4.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 25310,
+    "triangles": 50616,
+    "watertight": true,
+    "volume_mm3": 3909.559653370959,
+    "area_mm2": 2600.0135327189164,
+    "bbox_min": [
+      -6.5,
+      -6.5,
+      -65.0
+    ],
+    "bbox_max": [
+      6.5,
+      6.5,
+      8.0
+    ],
+    "center_of_mass": [
+      -0.0004394753267780661,
+      -0.00013112263494965393,
+      -22.868626978228548
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        50616
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 120
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "7c1a056daf3b33fb"
+}

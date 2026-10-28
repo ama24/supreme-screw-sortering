@@ -1,0 +1,8 @@
+# Raspberry Pi (Raspberry Pi OS Bookworm) capture scripts.
+# Picamera2 and libcamera come from apt, not pip:
+#   sudo apt install -y python3-picamera2 python3-numpy
+# Create the venv with system packages so Picamera2 is visible:
+#   python3 -m venv --system-site-packages ~/screwcam && source ~/screwcam/bin/activate
+#   pip install -r requirements.txt
+opencv-contrib-python-headless>=4.8
+numpy

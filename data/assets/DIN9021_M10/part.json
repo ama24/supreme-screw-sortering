@@ -1,0 +1,101 @@
+{
+  "id": "DIN9021_M10",
+  "class_name": "DIN9021_M10",
+  "family": "DIN9021",
+  "kind": "washer",
+  "shape": "washer",
+  "size": "M10",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "d1": 10.5,
+    "d2": 30.0,
+    "h": 2.5
+  },
+  "finishes": [
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        1.25
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -1.25
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 1024,
+    "triangles": 2048,
+    "watertight": true,
+    "volume_mm3": 1532.3019643871728,
+    "area_mm2": 1499.6754981882677,
+    "bbox_min": [
+      -15.0,
+      -15.0,
+      -1.25
+    ],
+    "bbox_max": [
+      15.0,
+      15.0,
+      1.25
+    ],
+    "center_of_mass": [
+      0.0,
+      0.0,
+      2.4731164910454146e-17
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        2048
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 60
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "8ab2c0dda0f94291"
+}

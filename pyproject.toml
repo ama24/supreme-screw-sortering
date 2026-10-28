@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "screwsynth"
+version = "0.1.0"
+description = "Synthetic data (BlenderProc) and YOLO models to detect and measure metric fasteners"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+catalogue = ["ruamel.yaml>=0.18"]
+partgen = ["numpy>=1.24", "trimesh>=4.0", "manifold3d>=3.0", "pillow>=10.0", "networkx>=3.0", "scipy>=1.10"]
+calib = ["opencv-contrib-python>=4.8", "matplotlib>=3.7", "pillow>=10.0"]
+train = ["ultralytics>=8.3"]
+dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5", "ruamel.yaml>=0.18"]
+# everything except training (PyTorch is large and needs the CUDA build, see README)
+all = ["screwsynth[catalogue,partgen,calib,dev]"]
+
+[project.scripts]
+screwsynth-catalogue = "screwsynth.catalogue.cli:main"
+screwsynth-partgen = "screwsynth.partgen.cli:main"
+screwsynth-restposes = "screwsynth.restposes.cli:main"
+screwsynth-calib = "screwsynth.calibration.cli:main"
+screwsynth-post = "screwsynth.postprocess.cli:main"
+screwsynth-labels = "screwsynth.labels.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/screwsynth"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "slow: needs Blender, a GPU, network or long runtimes (deselect with -m \"not slow\")",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "PTH"]
+ignore = ["E501"]  # line length is handled by `ruff format`; long strings are allowed
+
+[tool.ruff.lint.isort]
+known-first-party = ["screwsynth"]

@@ -1,0 +1,110 @@
+{
+  "id": "DIN912_M10x70",
+  "class_name": "DIN912_M10",
+  "family": "DIN912",
+  "kind": "screw",
+  "shape": "socket_cap",
+  "size": "M10",
+  "length": 70.0,
+  "pitch": 1.5,
+  "fully_threaded": false,
+  "dims": {
+    "dk": 16.0,
+    "k": 10.0,
+    "s": 8.0,
+    "t": 5.0,
+    "b": 32.0,
+    "full_thread_max_length": 40.0,
+    "d": 10.0,
+    "ds": 10.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 70.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        10.0
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -70.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 8.0,
+    "tip": 5.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 22710,
+    "triangles": 45416,
+    "watertight": true,
+    "volume_mm3": 6710.974663150312,
+    "area_mm2": 3660.686427923642,
+    "bbox_min": [
+      -8.0,
+      -8.0,
+      -70.0
+    ],
+    "bbox_max": [
+      8.0,
+      8.0,
+      10.0
+    ],
+    "center_of_mass": [
+      0.00044912914226870657,
+      -0.00043008259706978807,
+      -23.898532079492327
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        45416
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 120
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "950b0f0c95c6990b"
+}

@@ -1,0 +1,106 @@
+{
+  "id": "DIN125A_M4",
+  "class_name": "DIN125A_M4",
+  "family": "DIN125A",
+  "kind": "washer",
+  "shape": "washer",
+  "size": "M4",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "d1": 4.3,
+    "d2": 9.0,
+    "h": 0.8
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel",
+    "brass",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.4
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -0.4
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 1024,
+    "triangles": 2048,
+    "watertight": true,
+    "volume_mm3": 38.67916272972686,
+    "area_mm2": 125.47413427814826,
+    "bbox_min": [
+      -4.5,
+      -4.5,
+      -0.4000000059604645
+    ],
+    "bbox_max": [
+      4.5,
+      4.5,
+      0.4000000059604645
+    ],
+    "center_of_mass": [
+      0.0,
+      1.2246778982352215e-16,
+      0.0
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        2048
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 60
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "45817c02c188ec7a"
+}

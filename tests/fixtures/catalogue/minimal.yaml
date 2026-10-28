@@ -1,0 +1,64 @@
+# Minimal valid catalogue used by the tests. Comments must survive round-trip edits.
+version: 1
+
+finishes:
+  zinc_clear: {label: Zinc clear, material: metal}
+  nylon_white: {label: Nylon white, material: plastic}
+
+families:
+  DIN912:
+    title: Socket head cap screw
+    standard: DIN 912 / ISO 4762
+    kind: screw
+    shape: socket_cap
+    nominal_length: bearing_to_tip
+    enabled: true
+    verified: false
+    dims_source: test
+    finishes:
+      zinc_clear: all
+      nylon_white: [M3]  # nylon only in M3
+    sizes:
+      M3:
+        pitch: 0.5
+        dims: {dk: 5.5, k: 3.0, s: 2.5, t: 1.3, b: 18, full_thread_max_length: 20}
+        lengths: [6, 10, 30]  # keep sorted
+        uncommon: [30]
+      M4:
+        pitch: 0.7
+        dims: {dk: 7.0, k: 4.0, s: 3.0, t: 2.0, b: 20, full_thread_max_length: 25}
+        lengths: [8, 16]
+
+  DIN934:
+    standard: DIN 934
+    kind: nut
+    shape: hex_nut
+    dims_source: test
+    finishes:
+      zinc_clear: all
+    sizes:
+      M3: {pitch: 0.5, dims: {s: 5.5, m: 2.4, e: 6.01}}
+
+  DIN125A:
+    standard: DIN 125 A
+    kind: washer
+    shape: washer
+    dims_source: test
+    finishes:
+      zinc_clear: all
+    sizes:
+      M3: {dims: {d1: 3.2, d2: 7.0, h: 0.5}}
+
+  TNUT_DROP:
+    standard: none
+    kind: tnut
+    shape: tnut_drop
+    tnut_kind: DROP
+    dims_source: vendor-typical, measure your own
+    finishes:
+      zinc_clear: all
+    sizes:
+      S6_M4: {pitch: 0.7, dims: {length: 11.0, width: 6.0, height: 4.5, neck_width: 5.8, neck_height: 1.5}}
+
+# overrides
+rules: []

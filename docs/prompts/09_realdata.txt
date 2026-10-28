@@ -1,0 +1,48 @@
+PROMPT 09 — REAL DATA TOOL (validation set and sim-to-real check)
+=================================================================
+
+CONTEXT
+Read CLAUDE.md first. Synthetic metrics are not trustworthy on their own; the project is judged on
+real captures from the rig. This tool captures, labels and manages a small real dataset
+(target: 100-200 images for validation, optionally a few hundred more for fine-tuning) and feeds it
+to tools 06 (realism comparison), 07 (val_real split) and 08 (evaluation, fine-tuning). Work in
+branch tool/realdata and open a pull request.
+
+CAPTURE (Raspberry Pi)
+- Reuse tools/calibration/pi/capture.py --mode single with the locked camera_settings.json; refuse
+  to capture if settings differ.
+- Before each session run the calibration recheck (tool 03) on the plate corner markers or a flat
+  board image and stop if the pose has drifted beyond threshold.
+- Session helper: home/park Y via the printer's serial port (send G-code over USB with pyserial,
+  configurable port; ask me before sending any motion command other than homing/parking), capture,
+  save image + sidecar (session id, time, settings, operator notes).
+- Inventory sheet per session: a CSV listing what is on the plate (part id, finish, caliper-measured
+  length, count), filled in by me before capture; this is the ground truth for length.
+
+LABELLING
+- Pre-annotate with the current best stage-1 model (tool 08) to save time, then correct by hand.
+- Export pre-annotations to CVAT or Label Studio (support at least one, document the setup with
+  Docker), and import the corrected annotations back.
+- Keypoints (head_top, bearing, tip) are labelled for screws that lie flat; others get class and
+  polygon only.
+- Link each labelled screw to the inventory sheet so its true length comes from calipers, not
+  from clicking on pixels. Provide a matching helper: after labelling, list the screws per class in
+  the image and the inventory entries, and let me assign them (or auto-assign when unambiguous).
+- Convert to the same dataset formats as tool 07 so the real set plugs straight in as val_real or as
+  a fine-tuning set. Never mix real validation images into training.
+
+SIM-TO-REAL REPORT
+`screwsynth-real report`: run tool 06's compare on the real set, tool 08's eval, and summarise the
+top error sources (classes, finishes, sizes, lighting) with example images, plus suggested config
+changes (e.g. "zinc parts too bright in renders", "blur too low").
+
+CLI (entry point "screwsynth-real"): session new, capture (Pi side), inventory template, preannotate,
+export-cvat|export-labelstudio, import, match, build-dataset --name val_real, report.
+
+TESTS
+- Import/export round trip with a small fixture annotation file.
+- Matching logic with ambiguous and unambiguous cases.
+
+ACCEPTANCE
+- A documented end-to-end procedure: capture a session, fill inventory, pre-annotate, correct,
+  import, match lengths, build val_real, run the report.

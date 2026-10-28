@@ -1,0 +1,111 @@
+{
+  "id": "DIN933_M4x16",
+  "class_name": "DIN933_M4",
+  "family": "DIN933",
+  "kind": "screw",
+  "shape": "hex",
+  "size": "M4",
+  "length": 16.0,
+  "pitch": 0.7,
+  "fully_threaded": true,
+  "dims": {
+    "s": 7.0,
+    "k": 2.8,
+    "e": 7.66,
+    "dw": 5.88,
+    "c": 0.4,
+    "d": 4.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel",
+    "brass",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": 16.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.8
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -16.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 3.5,
+    "tip": 2.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 11308,
+    "triangles": 22612,
+    "watertight": true,
+    "volume_mm3": 272.6242790217936,
+    "area_mm2": 432.394206819249,
+    "bbox_min": [
+      -4.041451930999756,
+      -3.5,
+      -16.0
+    ],
+    "bbox_max": [
+      4.041451930999756,
+      3.5,
+      2.799999952316284
+    ],
+    "center_of_mass": [
+      -3.084984366823849e-05,
+      -0.0005304525297993374,
+      -4.052554107287185
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        22612
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 80
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "ed410b1397b68b70"
+}

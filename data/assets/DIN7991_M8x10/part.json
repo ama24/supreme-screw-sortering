@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M8x10",
+  "class_name": "DIN7991_M8",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M8",
+  "length": 10.0,
+  "pitch": 1.25,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 16.0,
+    "k": 4.4,
+    "s": 5.0,
+    "t": 3.5,
+    "b": 28.0,
+    "full_thread_max_length": 45.0,
+    "d": 8.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 10.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        4.4
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -5.6
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 8.0,
+    "tip": 4.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 2502,
+    "triangles": 5000,
+    "watertight": true,
+    "volume_mm3": 701.9944378648144,
+    "area_mm2": 715.0021236715681,
+    "bbox_min": [
+      -8.0,
+      -8.0,
+      -5.599999904632568
+    ],
+    "bbox_max": [
+      8.0,
+      8.0,
+      4.400000095367432
+    ],
+    "center_of_mass": [
+      0.003353099318220596,
+      0.0005808446840707505,
+      0.8991093052029964
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        5000
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "8b8af1ce416ff149"
+}

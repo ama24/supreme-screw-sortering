@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M5x16",
+  "class_name": "DIN7991_M5",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M5",
+  "length": 16.0,
+  "pitch": 0.8,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 10.0,
+    "k": 2.8,
+    "s": 3.0,
+    "t": 2.3,
+    "b": 22.0,
+    "full_thread_max_length": 35.0,
+    "d": 5.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 16.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.8
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -13.2
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 5.0,
+    "tip": 2.5
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 8254,
+    "triangles": 16504,
+    "watertight": true,
+    "volume_mm3": 329.84454257193,
+    "area_mm2": 508.6530810750843,
+    "bbox_min": [
+      -5.0,
+      -5.0,
+      -13.199999809265137
+    ],
+    "bbox_max": [
+      5.0,
+      5.0,
+      2.799999952316284
+    ],
+    "center_of_mass": [
+      0.0011740172497601486,
+      9.125208633190967e-05,
+      -3.5425537538818217
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        16504
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "09cf6d33e5c57828"
+}

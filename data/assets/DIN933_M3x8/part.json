@@ -1,0 +1,110 @@
+{
+  "id": "DIN933_M3x8",
+  "class_name": "DIN933_M3",
+  "family": "DIN933",
+  "kind": "screw",
+  "shape": "hex",
+  "size": "M3",
+  "length": 8.0,
+  "pitch": 0.5,
+  "fully_threaded": true,
+  "dims": {
+    "s": 5.5,
+    "k": 2.0,
+    "e": 6.01,
+    "dw": 4.57,
+    "c": 0.4,
+    "d": 3.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel",
+    "brass",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": 8.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -8.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 2.75,
+    "tip": 1.5
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 8027,
+    "triangles": 16050,
+    "watertight": true,
+    "volume_mm3": 93.9365981381618,
+    "area_mm2": 192.01883253064065,
+    "bbox_min": [
+      -3.175426483154297,
+      -2.75,
+      -8.0
+    ],
+    "bbox_max": [
+      3.175426483154297,
+      2.75,
+      2.0
+    ],
+    "center_of_mass": [
+      -0.0002682109806389987,
+      -0.0001565605028478917,
+      -1.3767354755607715
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        16050
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 80
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "5daf98255d789d8a"
+}

@@ -1,0 +1,494 @@
+"""Catalogue data model: families with per-size tables, expanded into parts in code.
+
+Pure Python (no pydantic, no numpy) so the expanded catalogue can also be used inside Blender.
+`parse_catalogue` raises CatalogueError for structural problems (wrong types, unknown keys,
+unparsable sizes); semantic checks (dimension sanity, finishes, ids) live in validate.py.
+"""
+
+from __future__ import annotations
+
+import fnmatch
+import hashlib
+import json
+import os
+import re
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
+from typing import Any
+
+from screwsynth.common.naming import format_size, plain_id, screw_id, size_value, tnut_id
+
+KINDS = ("screw", "nut", "washer", "tnut")
+NOMINAL_LENGTH_MODES = ("bearing_to_tip", "head_top_to_tip")
+SOURCES = ("parametric", "step")
+MATERIALS = ("metal", "plastic")
+
+# Dimensions each parametric shape needs (standard symbols, mm). "d" is filled in from the size.
+REQUIRED_DIMS: dict[str, tuple[str, ...]] = {
+    "socket_cap": ("d", "dk", "k", "s", "t", "b", "ds"),
+    "hex": ("d", "s", "k", "e"),
+    "button": ("d", "dk", "k", "s", "t"),
+    "countersunk": ("d", "dk", "k", "s", "t", "angle"),
+    "hex_nut": ("d", "s", "m", "e"),
+    "nyloc_nut": ("d", "s", "h", "m", "e"),
+    "washer": ("d1", "d2", "h"),
+    "tnut_slide": ("d", "length", "width", "height", "neck_width", "neck_height"),
+    "tnut_drop": ("d", "length", "width", "height", "neck_width", "neck_height"),
+    "step": (),
+}
+SHAPE_KIND = {
+    "socket_cap": "screw",
+    "hex": "screw",
+    "button": "screw",
+    "countersunk": "screw",
+    "hex_nut": "nut",
+    "nyloc_nut": "nut",
+    "washer": "washer",
+    "tnut_slide": "tnut",
+    "tnut_drop": "tnut",
+}
+
+_FAMILY_KEYS = {
+    "title",
+    "standard",
+    "kind",
+    "shape",
+    "nominal_length",
+    "enabled",
+    "verified",
+    "dims_source",
+    "finishes",
+    "common_dims",
+    "sizes",
+    "source",
+    "tnut_kind",
+    "notes",
+}
+_SIZE_KEYS = {"pitch", "dims", "lengths", "uncommon", "enabled", "common", "verified", "step"}
+_TNUT_KEY_RE = re.compile(r"^S(?P<slot>[1-9]\d*)_(?P<size>M\d+(?:\.\d+)?)$")
+_FAMILY_RE = re.compile(r"^[A-Z][A-Z0-9]*$")
+_TNUT_FAMILY_RE = re.compile(r"^TNUT_[A-Z0-9_]+$")
+
+
+class CatalogueError(ValueError):
+    """The catalogue file is structurally invalid."""
+
+
+@dataclass(frozen=True)
+class Finish:
+    id: str
+    label: str
+    material: str
+
+
+@dataclass
+class SizeSpec:
+    key: str  # table key: "M4", or "S6_M4" for T-nuts
+    size: str  # thread size, e.g. "M4"
+    pitch: float | None
+    dims: dict[str, float]
+    lengths: list[float] = field(default_factory=list)
+    uncommon: list[float] = field(default_factory=list)
+    enabled: bool | None = None
+    common: bool = True
+    verified: bool | None = None
+    slot: int | None = None
+    step: dict[str, Any] | None = None
+
+
+@dataclass
+class Family:
+    name: str
+    kind: str
+    standard: str
+    shape: str
+    enabled: bool
+    verified: bool
+    dims_source: str
+    finishes: dict[str, tuple[str, ...] | None]  # finish -> size keys, None = all sizes
+    sizes: dict[str, SizeSpec]
+    title: str = ""
+    nominal_length: str | None = None
+    source: str = "parametric"
+    tnut_kind: str | None = None
+
+    def finishes_for(self, size_key: str) -> tuple[str, ...]:
+        return tuple(f for f, keys in self.finishes.items() if keys is None or size_key in keys)
+
+
+@dataclass(frozen=True)
+class Part:
+    id: str
+    class_name: str
+    family: str
+    kind: str
+    standard: str
+    shape: str
+    size: str
+    length: float | None
+    pitch: float | None
+    enabled: bool
+    common: bool
+    finishes: tuple[str, ...]
+    dims: Mapping[str, float]
+    dims_source: str
+    verified: bool
+    source: str = "parametric"
+    nominal_length: str | None = None
+    slot: int | None = None
+    tnut_kind: str | None = None
+    step: Mapping[str, Any] | None = None
+    size_key: str = ""
+
+    @property
+    def fully_threaded(self) -> bool | None:
+        """For screws: True when the thread runs up to the head (None for non-screws)."""
+        if self.kind != "screw" or self.length is None:
+            return None
+        limit = self.dims.get("full_thread_max_length")
+        if "b" not in self.dims or limit is None:
+            return True
+        return self.length <= limit
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "class_name": self.class_name,
+            "family": self.family,
+            "kind": self.kind,
+            "standard": self.standard,
+            "shape": self.shape,
+            "size": self.size,
+            "length": self.length,
+            "pitch": self.pitch,
+            "enabled": self.enabled,
+            "common": self.common,
+            "finishes": list(self.finishes),
+            "dims": dict(self.dims),
+            "dims_source": self.dims_source,
+            "verified": self.verified,
+            "source": self.source,
+            "nominal_length": self.nominal_length,
+            "fully_threaded": self.fully_threaded,
+            "slot": self.slot,
+            "tnut_kind": self.tnut_kind,
+            "step": dict(self.step) if self.step is not None else None,
+        }
+
+    @property
+    def hash(self) -> str:
+        """Hash of everything that defines the part's geometry (used for incremental builds)."""
+        geom = {
+            k: v
+            for k, v in self.to_dict().items()
+            if k not in ("enabled", "common", "finishes", "verified", "dims_source")
+        }
+        return _hash(geom)
+
+
+@dataclass(frozen=True)
+class Rule:
+    match: str
+    enabled: bool
+
+    def matches(self, part: Part) -> bool:
+        return any(
+            fnmatch.fnmatchcase(c, self.match)
+            for c in (part.id, part.class_name, part.family, part.size)
+        )
+
+
+@dataclass
+class Catalogue:
+    version: int
+    finishes: dict[str, Finish]
+    families: dict[str, Family]
+    rules: list[Rule] = field(default_factory=list)
+    max_length_mm: float | None = None
+    _parts: list[Part] | None = field(default=None, init=False, repr=False)
+
+    @property
+    def parts(self) -> list[Part]:
+        """All parts (enabled or not), expanded family x size x length up to max_length_mm."""
+        if self._parts is None:
+            self._parts = expand(self)
+        return self._parts
+
+    @property
+    def enabled_parts(self) -> list[Part]:
+        return [p for p in self.parts if p.enabled]
+
+    def part(self, part_id: str) -> Part:
+        for p in self.parts:
+            if p.id == part_id:
+                return p
+        raise KeyError(part_id)
+
+    def classes(self, enabled_only: bool = True) -> list[str]:
+        """Class names in deterministic order: family, then slot, then numeric size."""
+        parts = self.enabled_parts if enabled_only else self.parts
+        first: dict[str, Part] = {}
+        for p in parts:
+            first.setdefault(p.class_name, p)
+        return sorted(first, key=lambda c: class_sort_key(first[c]))
+
+    @property
+    def hash(self) -> str:
+        return _hash([[p.id, p.hash] for p in self.enabled_parts])
+
+
+def class_sort_key(part: Part) -> tuple[str, int, float]:
+    return (part.family, part.slot or 0, size_value(part.size))
+
+
+def _hash(obj: Any) -> str:
+    text = json.dumps(obj, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
+# ------------------------------------------------------------------------------------- parsing
+
+
+def _expect(value: Any, typ: type | tuple[type, ...], where: str) -> Any:
+    if not isinstance(value, typ):
+        names = typ.__name__ if isinstance(typ, type) else "/".join(t.__name__ for t in typ)
+        raise CatalogueError(f"{where}: expected {names}, got {type(value).__name__}")
+    return value
+
+
+def _num(value: Any, where: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise CatalogueError(f"{where}: expected a number, got {value!r}")
+    return float(value)
+
+
+def _num_list(value: Any, where: str) -> list[float]:
+    _expect(value, Sequence, where)
+    if isinstance(value, str):
+        raise CatalogueError(f"{where}: expected a list of numbers")
+    return [_num(v, f"{where}[{i}]") for i, v in enumerate(value)]
+
+
+def _check_keys(raw: Mapping[str, Any], allowed: set[str], where: str) -> None:
+    unknown = sorted(set(raw) - allowed)
+    if unknown:
+        raise CatalogueError(f"{where}: unknown key(s) {unknown}; allowed: {sorted(allowed)}")
+
+
+def _parse_size_key(key: str, kind: str, where: str) -> tuple[str, int | None]:
+    if kind == "tnut":
+        m = _TNUT_KEY_RE.match(str(key))
+        if not m:
+            raise CatalogueError(f"{where}: T-nut size keys look like S6_M4, got {key!r}")
+        return format_size(m["size"]), int(m["slot"])
+    try:
+        size = format_size(key)
+    except ValueError as exc:
+        raise CatalogueError(f"{where}: {exc}") from None
+    if size != str(key):
+        raise CatalogueError(f"{where}: write the size as {size!r}, not {key!r}")
+    return size, None
+
+
+def _parse_size(
+    key: str, raw: Any, fam_kind: str, shape: str, common_dims: Mapping[str, float], where: str
+) -> SizeSpec:
+    _expect(raw, Mapping, where)
+    _check_keys(raw, _SIZE_KEYS, where)
+    size, slot = _parse_size_key(key, fam_kind, where)
+    dims_raw = _expect(raw.get("dims", {}), Mapping, f"{where}.dims")
+    dims = {str(k): _num(v, f"{where}.dims.{k}") for k, v in common_dims.items()}
+    dims.update({str(k): _num(v, f"{where}.dims.{k}") for k, v in dims_raw.items()})
+    if shape != "washer":
+        dims.setdefault("d", size_value(size))
+    if shape == "socket_cap":
+        dims.setdefault("ds", dims["d"])
+    pitch = raw.get("pitch")
+    step = raw.get("step")
+    if step is not None:
+        step = dict(_expect(step, Mapping, f"{where}.step"))
+    return SizeSpec(
+        key=str(key),
+        size=size,
+        pitch=None if pitch is None else _num(pitch, f"{where}.pitch"),
+        dims=dims,
+        lengths=_num_list(raw.get("lengths", []), f"{where}.lengths"),
+        uncommon=_num_list(raw.get("uncommon", []), f"{where}.uncommon"),
+        enabled=None if raw.get("enabled") is None else bool(raw["enabled"]),
+        common=bool(raw.get("common", True)),
+        verified=None if raw.get("verified") is None else bool(raw["verified"]),
+        slot=slot,
+        step=step,
+    )
+
+
+def _parse_finish_sizes(value: Any, where: str) -> tuple[str, ...] | None:
+    if value == "all" or value is None:
+        return None
+    if isinstance(value, str) or not isinstance(value, Sequence):
+        raise CatalogueError(f"{where}: expected 'all' or a list of size keys")
+    return tuple(str(v) for v in value)
+
+
+def parse_family(name: str, raw: Any) -> Family:
+    where = f"families.{name}"
+    _expect(raw, Mapping, where)
+    _check_keys(raw, _FAMILY_KEYS, where)
+    for key in ("kind", "standard", "sizes"):
+        if key not in raw:
+            raise CatalogueError(f"{where}: missing required key {key!r}")
+    kind = str(raw["kind"])
+    if kind not in KINDS:
+        raise CatalogueError(f"{where}.kind: {kind!r} is not one of {KINDS}")
+    name_re = _TNUT_FAMILY_RE if kind == "tnut" else _FAMILY_RE
+    if not name_re.match(name) or name == "TNUT":
+        raise CatalogueError(
+            f"{where}: family names use upper-case letters and digits, e.g. DIN912"
+        )
+    tnut_kind = None if raw.get("tnut_kind") is None else str(raw["tnut_kind"]).upper()
+    if (kind == "tnut") != (tnut_kind in ("SLIDE", "DROP")):
+        raise CatalogueError(f"{where}: T-nut families (and only they) need tnut_kind SLIDE|DROP")
+    source = str(raw.get("source", "parametric"))
+    if source not in SOURCES:
+        raise CatalogueError(f"{where}.source: {source!r} is not one of {SOURCES}")
+    shape = str(raw.get("shape", "step" if source == "step" else ""))
+    if shape not in REQUIRED_DIMS:
+        raise CatalogueError(f"{where}.shape: {shape!r} is not one of {sorted(REQUIRED_DIMS)}")
+    common_dims = _expect(raw.get("common_dims", {}), Mapping, f"{where}.common_dims")
+    finishes_raw = _expect(raw.get("finishes", {}), Mapping, f"{where}.finishes")
+    sizes_raw = _expect(raw["sizes"], Mapping, f"{where}.sizes")
+    sizes = {
+        str(k): _parse_size(str(k), v, kind, shape, common_dims, f"{where}.sizes.{k}")
+        for k, v in sizes_raw.items()
+    }
+    return Family(
+        name=name,
+        kind=kind,
+        standard=str(raw["standard"]),
+        shape=shape,
+        enabled=bool(raw.get("enabled", True)),
+        verified=bool(raw.get("verified", False)),
+        dims_source=str(raw.get("dims_source", "")),
+        finishes={
+            str(f): _parse_finish_sizes(v, f"{where}.finishes.{f}") for f, v in finishes_raw.items()
+        },
+        sizes=sizes,
+        title=str(raw.get("title", "")),
+        nominal_length=None if raw.get("nominal_length") is None else str(raw["nominal_length"]),
+        source=source,
+        tnut_kind=tnut_kind,
+    )
+
+
+def parse_catalogue(data: Any, max_length_mm: float | None = None) -> Catalogue:
+    """Build a Catalogue from the loaded YAML mapping (PyYAML or ruamel round-trip data)."""
+    _expect(data, Mapping, "catalogue")
+    _check_keys(data, {"version", "finishes", "families", "rules"}, "catalogue")
+    finishes: dict[str, Finish] = {}
+    for fid, raw in _expect(data.get("finishes", {}), Mapping, "finishes").items():
+        _expect(raw, Mapping, f"finishes.{fid}")
+        finishes[str(fid)] = Finish(
+            id=str(fid),
+            label=str(raw.get("label", fid)),
+            material=str(raw.get("material", "metal")),
+        )
+    families = {
+        str(name): parse_family(str(name), raw)
+        for name, raw in _expect(data.get("families", {}) or {}, Mapping, "families").items()
+    }
+    rules = []
+    for i, raw in enumerate(_expect(data.get("rules", []) or [], Sequence, "rules")):
+        _expect(raw, Mapping, f"rules[{i}]")
+        _check_keys(raw, {"match", "enabled"}, f"rules[{i}]")
+        if "match" not in raw or "enabled" not in raw:
+            raise CatalogueError(f"rules[{i}]: needs both 'match' and 'enabled'")
+        rules.append(Rule(match=str(raw["match"]), enabled=bool(raw["enabled"])))
+    return Catalogue(
+        version=int(data.get("version", 1)),
+        finishes=finishes,
+        families=families,
+        rules=rules,
+        max_length_mm=max_length_mm,
+    )
+
+
+def load_catalogue(path: str | os.PathLike[str], max_length_mm: float | None = None) -> Catalogue:
+    from screwsynth.common.io import read_yaml
+
+    return parse_catalogue(read_yaml(path), max_length_mm=max_length_mm)
+
+
+# ----------------------------------------------------------------------------------- expansion
+
+
+def _part_ids(fam: Family, spec: SizeSpec, length: float | None) -> tuple[str, str]:
+    if fam.kind == "tnut":
+        pid = tnut_id(fam.tnut_kind or "", spec.slot or 0, spec.size)
+        return pid, pid
+    cname = plain_id(fam.name, spec.size)
+    if length is None:
+        return cname, cname
+    return screw_id(fam.name, spec.size, length), cname
+
+
+def expand(cat: Catalogue) -> list[Part]:
+    """Expand families into parts. Lengths above max_length_mm are left out."""
+    parts: list[Part] = []
+    for fam in cat.families.values():
+        for spec in fam.sizes.values():
+            if fam.kind == "screw":
+                lengths: list[float | None] = [
+                    L for L in spec.lengths if cat.max_length_mm is None or cat.max_length_mm >= L
+                ]
+            else:
+                lengths = [None]
+            base_enabled = fam.enabled and (spec.enabled if spec.enabled is not None else True)
+            for length in lengths:
+                pid, cname = _part_ids(fam, spec, length)
+                part = Part(
+                    id=pid,
+                    class_name=cname,
+                    family=fam.name,
+                    kind=fam.kind,
+                    standard=fam.standard,
+                    shape=fam.shape,
+                    size=spec.size,
+                    length=length,
+                    pitch=spec.pitch,
+                    enabled=base_enabled,
+                    common=spec.common and (length is None or length not in spec.uncommon),
+                    finishes=fam.finishes_for(spec.key),
+                    dims=dict(spec.dims),
+                    dims_source=fam.dims_source,
+                    verified=spec.verified if spec.verified is not None else fam.verified,
+                    source=fam.source,
+                    nominal_length=fam.nominal_length,
+                    slot=spec.slot,
+                    tnut_kind=fam.tnut_kind,
+                    step=_step_for(spec, length),
+                    size_key=spec.key,
+                )
+                for rule in cat.rules:
+                    if rule.matches(part):
+                        part = _replace_enabled(part, rule.enabled)
+                parts.append(part)
+    return parts
+
+
+def _step_for(spec: SizeSpec, length: float | None) -> dict[str, Any] | None:
+    """STEP entry of a part: per-length mapping for screws, a single mapping otherwise."""
+    if spec.step is None:
+        return None
+    if length is None:
+        return spec.step
+    for key, value in spec.step.items():
+        try:
+            if float(key) == length:
+                return dict(value) if isinstance(value, Mapping) else {"path": value}
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _replace_enabled(part: Part, enabled: bool) -> Part:
+    return replace(part, enabled=enabled)

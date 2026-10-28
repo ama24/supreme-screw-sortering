@@ -1,0 +1,110 @@
+{
+  "id": "DIN933_M10x30",
+  "class_name": "DIN933_M10",
+  "family": "DIN933",
+  "kind": "screw",
+  "shape": "hex",
+  "size": "M10",
+  "length": 30.0,
+  "pitch": 1.5,
+  "fully_threaded": true,
+  "dims": {
+    "s": 16.0,
+    "k": 6.4,
+    "e": 17.77,
+    "dw": 14.63,
+    "c": 0.6,
+    "d": 10.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": 30.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        6.4
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -30.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 8.0,
+    "tip": 5.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 9948,
+    "triangles": 19892,
+    "watertight": true,
+    "volume_mm3": 3324.0188231985762,
+    "area_mm2": 2125.9177032219095,
+    "bbox_min": [
+      -9.237604141235352,
+      -8.0,
+      -30.0
+    ],
+    "bbox_max": [
+      9.237604141235352,
+      8.0,
+      6.400000095367432
+    ],
+    "center_of_mass": [
+      -0.0007830930850078478,
+      -0.0004354354531951924,
+      -7.323785079900956
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        19892
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 80
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "778170d3db38922b"
+}

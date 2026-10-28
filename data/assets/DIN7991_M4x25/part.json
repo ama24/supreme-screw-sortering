@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M4x25",
+  "class_name": "DIN7991_M4",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M4",
+  "length": 25.0,
+  "pitch": 0.7,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 8.0,
+    "k": 2.3,
+    "s": 2.5,
+    "t": 1.8,
+    "b": 20.0,
+    "full_thread_max_length": 30.0,
+    "d": 4.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 25.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.3
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -22.7
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 4.0,
+    "tip": 2.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 15902,
+    "triangles": 31800,
+    "watertight": true,
+    "volume_mm3": 290.05310413574864,
+    "area_mm2": 550.6543891914383,
+    "bbox_min": [
+      -4.0,
+      -4.0,
+      -22.700000762939453
+    ],
+    "bbox_max": [
+      4.0,
+      4.0,
+      2.299999952316284
+    ],
+    "center_of_mass": [
+      0.0005377625108814491,
+      0.0002492627736989079,
+      -8.496519696986647
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        31800
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "1b5870724d453380"
+}

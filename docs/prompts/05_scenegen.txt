@@ -1,0 +1,98 @@
+PROMPT 05 — SCENE GENERATOR TOOL (BlenderProc)
+==============================================
+
+CONTEXT
+Read CLAUDE.md first. This is the core renderer. It builds random scenes of fasteners lying on the
+TPU plate, seen by a virtual camera identical to the calibrated real one, and writes per image:
+the RGB render, a 16-bit instance mask and a meta.json with the full ground truth. It runs INSIDE
+Blender via `blenderproc run tools/scenegen/generate.py ...` (BlenderProc installed with
+`pip install blenderproc`; it downloads its own Blender). Remember: only stdlib, numpy, blenderproc
+and pure-Python repo modules are importable inside Blender (add src/ to sys.path). Lens distortion
+and sensor effects are NOT done here; tool 06 does them in normal Python. Work in branch
+tool/scenegen and open a pull request.
+
+INPUTS
+configs/config.yaml (scenegen section), configs/catalogue.yaml + classes.yaml,
+data/assets/* (tool 02), data/rest_poses/* (tool 04), data/calibration/calibration.json and
+plate_empty.png (tool 03). Until real calibration exists, support a --nominal-camera flag using
+nominal Pi Camera 3 values (4.74 mm focal length, 1.4 um pixels, 4608 x 2592, 300 mm above the
+plate, looking straight down) so development is not blocked.
+
+SCENE (built once per Blender session, kept across scenes)
+- Apply WORLD_SCALE to all geometry and translations (see CLAUDE.md).
+- Camera: from K and T_cam_plate. Set sensor fit, focal length in pixels, and principal point via
+  shift_x/shift_y; render resolution = the ROI size; adjust the principal point for the ROI offset.
+  Write a unit check that projects known 3D plate points with Blender's camera and with K/T in numpy
+  and asserts they agree within 0.1 px (undistorted).
+- Plate: a thin box at z = 0 with plate_empty.png as base colour (de-lit with the flat-field), matte
+  roughness randomised in range, slight bump from a noise texture to mimic print lines; option to
+  swap in solid colours or other textures for domain randomisation (config probability).
+- Surroundings: the bed edge and a dark shroud enclosure so metal reflections look like the real rig
+  (metals mostly reflect the enclosure and the lights, not an open room).
+- Lights: an area light / light panel matching the real diffuse light, intensity, size and position
+  randomised within config ranges; optional weak HDRI for fill.
+- Load each asset's render mesh lazily and keep a library; duplicate (linked data) per instance.
+- Physics uses collision.obj proxies (compound convex), not the render mesh.
+
+PER SCENE LOOP
+1. Composition sampler: number of objects from a config range (default 15-40). Choose classes with
+   a class-balancing sampler that tracks how many instances of each class have been produced so far
+   in this run and favours under-represented classes (state saved to output so resumed runs stay
+   balanced). Then choose length uniformly among that class's enabled parts, then a finish from that
+   part's allowed list. Config also has a fraction of scenes with very few objects (1-5) and a
+   fraction of crowded scenes where parts touch.
+2. Placement: pick a rest pose by probability (tool 04), random yaw, random x/y inside the working
+   area with a margin; reject overlaps using 2D footprints (oriented boxes or convex hull polygons);
+   allow controlled touching.
+3. Settle: short rigid-body simulation (bproc.object.simulate_physics_and_fix_final_poses with low
+   min/max time) so touching parts lean naturally; afterwards discard any object that fell off the
+   plate, is stacked on another (z of lowest point > threshold), or moved too far.
+4. Materials per instance: physically based finish presets (black oxide, zinc clear/yellow,
+   stainless A2/A4, plain steel, brass, nylon white/black) with randomised base colour, roughness,
+   anisotropy for machined surfaces, and optional subtle scratches/grime textures and fingerprint
+   smudges. Presets live in config so they can be tuned without code changes.
+5. Light/plate jitter per scene (and optionally 2-3 lighting variants of the same arrangement:
+   config variants_per_layout).
+6. Render with Cycles + OptiX: RGB, instance segmentation (bproc.renderer.enable_segmentation_output
+   with instance ids), depth (optional, off by default). Low samples + OptiX denoiser by default
+   (config), adaptive sampling on, persistent data on. The render covers only the ROI.
+7. Ground truth per object, written to meta.json (real millimetres, not Blender units):
+   instance_id (value in the mask), part_id, class_name, class_id, finish, length, size,
+   pose (4x4 in plate frame), rest_pose index, keypoints projected to pixels (undistorted, ROI
+   coordinates) with visibility (inside image and not occluded: check the instance mask and depth
+   at the keypoint), visible_pixel_fraction (visible mask pixels / pixels when rendered alone;
+   compute the "alone" area cheaply by rendering an extra mask pass with other objects hidden
+   only when objects touch, or approximate from the projected silhouette), measurable flag from the
+   rest pose, axis heights at head and tip (for parallax correction), and the camera parameters used.
+
+OUTPUT LAYOUT
+output/<run_name>/
+  run_config.yaml (exact config + git commit + seed), balance_state.json, log.txt
+  scenes/000000/ rgb.png, instance.png (uint16), meta.json
+  ...
+Runs are resumable (--resume skips finished scenes) and deterministic per seed. A crash in one scene
+is logged and skipped, not fatal. Rendering keeps one Blender process alive for many scenes
+(--scenes N), and a helper script launches several chunks sequentially with different seeds so a
+memory leak cannot accumulate (e.g. restart every 200 scenes).
+
+CLI
+  blenderproc run tools/scenegen/generate.py --run NAME --scenes N [--seed S] [--resume]
+                                            [--nominal-camera] [--preview]
+  blenderproc debug tools/scenegen/generate.py --scenes 1    (opens Blender UI on one built scene)
+  python tools/scenegen/batch.py --run NAME --total 3000 --chunk 200
+--preview renders 10 scenes at low resolution and low samples in under 2 minutes.
+
+PERFORMANCE TARGET
+RTX 2070 Super 8 GB: report seconds per scene in the log; aim for 20-40 s per full-resolution
+ROI scene. Expose samples, denoiser, resolution scale and light bounces in config and document the
+speed/quality trade-off measured on my machine (write a benchmark command).
+
+TESTS
+- Camera projection agreement test (above).
+- Composition sampler balances classes over 1000 simulated draws (pure Python, no Blender).
+- Overlap rejection and plate-boundary logic (pure Python).
+- A smoke test that runs 1 scene at tiny resolution with --nominal-camera (mark as slow test).
+
+ACCEPTANCE
+- `--preview` produces 10 scenes whose meta.json instances match the non-zero ids in instance.png.
+- README explains every config key, the output schema, and the "what do I actually run" workflow.

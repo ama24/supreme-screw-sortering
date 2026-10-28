@@ -1,0 +1,106 @@
+{
+  "id": "ISO7380_M10x30",
+  "class_name": "ISO7380_M10",
+  "family": "ISO7380",
+  "kind": "screw",
+  "shape": "button",
+  "size": "M10",
+  "length": 30.0,
+  "pitch": 1.5,
+  "fully_threaded": true,
+  "dims": {
+    "dk": 17.5,
+    "k": 5.5,
+    "s": 6.0,
+    "t": 3.12,
+    "d": 10.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 30.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        5.5
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -30.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 8.75,
+    "tip": 5.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 10782,
+    "triangles": 21560,
+    "watertight": true,
+    "volume_mm3": 2913.7363065421255,
+    "area_mm2": 2082.494150458063,
+    "bbox_min": [
+      -8.75,
+      -8.75,
+      -30.0
+    ],
+    "bbox_max": [
+      8.75,
+      8.75,
+      5.5
+    ],
+    "center_of_mass": [
+      -0.0008920220357216856,
+      -0.0004981320020952135,
+      -9.141291378527331
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        21560
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 248
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "617e4cb8df844d07"
+}

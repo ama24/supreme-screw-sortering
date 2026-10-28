@@ -1,0 +1,83 @@
+PROMPT 01 — CATALOGUE TOOL
+==========================
+
+CONTEXT
+Read CLAUDE.md first; it holds the project context and conventions. This tool creates the single
+source of truth for every part the dataset can contain: configs/catalogue.yaml, plus a validator and
+a CLI to add or enable parts. Work in a branch called tool/catalogue and open a pull request at the end.
+
+SCOPE OF PARTS
+Screws (sizes M2, M2.5, M3, M4, M5, M6, M8, M10, only where the size exists in that standard):
+- DIN 912 / ISO 4762  socket head cap screw (partially threaded above a length threshold: model the
+  standard thread length b)
+- DIN 933 / ISO 4017  hex head screw, fully threaded
+- ISO 7380            button head socket screw
+- DIN 7991 / ISO 10642 countersunk socket screw (nominal length includes the head)
+Lengths: every standard preferred length listed for that size in the standard, up to a configurable
+maximum (config: catalogue.max_length_mm, default 80). Mark combinations that are uncommon in trade
+with common: false rather than leaving them out.
+
+Nuts:     DIN 934 / ISO 4032 hex nut (enabled), DIN 985 nyloc nut (present, enabled: false)
+Washers:  DIN 125 A / ISO 7089 (enabled), DIN 9021 large washer (present, enabled: false)
+T-nuts:   slide-in and drop-in (roll-in/hammer) for slot 6 (2020 profile) with M3, M4, M5 and slot 8
+          (3030/4040 profiles) with M4, M5, M6. T-nuts are NOT standardised: put typical dimensions
+          and set dims_source: "vendor-typical, measure your own" so I can overwrite them with
+          caliper measurements.
+
+Finishes (visual only, never a class): black_oxide, zinc_clear, zinc_yellow, stainless_a2,
+stainless_a4, plain_steel, brass, nylon_white, nylon_black. Each part lists which finishes it is
+commonly sold in (e.g. nylon only for DIN 912/933/934/125 small sizes, brass mainly DIN 933/934/125).
+No aluminium.
+
+DATA TO STORE PER PART (all mm)
+- id, class_name, family, standard, size, length (screws), pitch (coarse), enabled, common, finishes
+- geometry dimensions needed to build an accurate mesh, using the standard's symbols, e.g.
+  DIN 912: d, dk, k, s (socket across flats), t (socket depth), b (thread length), ds
+  DIN 933: d, s (across flats), k, e (across corners)
+  ISO 7380: d, dk, k, s, t
+  DIN 7991: d, dk, k, s, t, countersink angle 90 deg
+  Nuts: d, s, m (height), e;  Washers: d1 (inner), d2 (outer), h;  T-nuts: full outline dims
+- dims_source (which standard table) and verified: false on every entry (I will verify with calipers)
+- per-size tolerances where the standard gives them are optional; nominal values are required
+
+STRUCTURE OF catalogue.yaml
+Keep it editable by hand. Use a "families" section holding the dimension table per size once, and
+a "parts" section that expands family x size x length. Better: store families + size tables + length
+lists, and generate the expanded part list in code, so adding a length is a one-line edit. Include a
+short header comment explaining how to add a new part, family or finish.
+
+CODE (src/screwsynth/catalogue/)
+- schema.py: dataclasses or pydantic models for Family, SizeSpec, Part, Finish; load + expand.
+- validate.py: checks ids unique, sizes exist in the family table, dimensions physically sane
+  (dk > d, k > 0, s < dk, b <= length, washer d2 > d1 ...), finishes known, classes consistent.
+- classes.py: generates configs/classes.yaml (deterministic sorted class ids from enabled parts).
+- cli.py (entry point "screwsynth-catalogue"):
+    list [--family F] [--size M4] [--enabled-only]
+    stats                       (counts of parts, classes, finishes)
+    validate
+    enable/disable <id|family|size pattern>
+    add-length <family> <size> <length>
+    add-family --from-template <file>   (for future parts, e.g. a new screw standard or STEP-based part)
+    export-csv <path>           (one row per part, for checking against supplier catalogues)
+    classes                     (regenerate classes.yaml)
+- Support an alternative part source for the future: a part may set source: step with a path to a
+  STEP file instead of parametric dims (only store and validate the field now; tool 02 handles it).
+
+DIMENSION DATA
+Fill the tables from the published DIN/ISO standards to the best of your knowledge. Where you are
+not certain of a value, still fill it, but add it to a list in tools/catalogue/VERIFY.md with the
+part, the field and why it is uncertain. Never silently invent T-nut dimensions; use clearly marked
+typical values.
+
+TESTS
+- Loading and expanding the shipped catalogue works and validates cleanly.
+- Every enabled class has at least one enabled part.
+- Validator catches each kind of error (one test per rule, using small fixture YAMLs).
+- add-length and enable/disable round-trip without breaking comments/format (use ruamel.yaml).
+
+ACCEPTANCE
+- `screwsynth-catalogue validate` passes; `stats` prints counts per family and per class.
+- tools/catalogue/README.md explains the file format and every CLI command with examples.
+- VERIFY.md lists every uncertain value.
+- Ask me before finalising: the max length default (80 mm) and whether nyloc nuts and large washers
+  should be enabled.

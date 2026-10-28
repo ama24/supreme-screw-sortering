@@ -1,0 +1,109 @@
+{
+  "id": "DIN7991_M6x12",
+  "class_name": "DIN7991_M6",
+  "family": "DIN7991",
+  "kind": "screw",
+  "shape": "countersunk",
+  "size": "M6",
+  "length": 12.0,
+  "pitch": 1.0,
+  "fully_threaded": true,
+  "dims": {
+    "angle": 90.0,
+    "dk": 12.0,
+    "k": 3.3,
+    "s": 4.0,
+    "t": 2.5,
+    "b": 24.0,
+    "full_thread_max_length": 40.0,
+    "d": 6.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": 12.0,
+  "nominal_length_mode": "head_top_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        3.3
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -8.7
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 6.0,
+    "tip": 3.0
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 4502,
+    "triangles": 9000,
+    "watertight": true,
+    "volume_mm3": 393.6344878463997,
+    "area_mm2": 527.24712476416,
+    "bbox_min": [
+      -6.0,
+      -6.0,
+      -8.699999809265137
+    ],
+    "bbox_max": [
+      6.0,
+      6.0,
+      3.299999952316284
+    ],
+    "center_of_mass": [
+      0.0014424238323698056,
+      -0.001604018941684118,
+      -1.1610086591103617
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        9000
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 152
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "c602d74400ffce94"
+}

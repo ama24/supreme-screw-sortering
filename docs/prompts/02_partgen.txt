@@ -1,0 +1,73 @@
+PROMPT 02 — PART GENERATOR TOOL
+===============================
+
+CONTEXT
+Read CLAUDE.md first. Tool 01 created configs/catalogue.yaml with exact dimensions for every part.
+This tool turns each catalogue part into 3D assets that BlenderProc can load. It runs in normal
+Python (numpy + trimesh), NOT inside Blender, so it can be unit-tested. Work in branch tool/partgen
+and open a pull request at the end.
+
+OUTPUT PER PART (data/assets/<part_id>/)
+- render.ply   detailed mesh for rendering, real millimetre scale, watertight, sensible normals
+- collision.obj simplified convex-ish proxy for physics (head + shank as low-poly convex pieces,
+                no threads); a list of convex parts is fine (compound collision)
+- part.json    id, class_name, family, size, length, all dims used, mesh stats, bounding box,
+               centre of mass, keypoints in the part's local frame (head_top, bearing, tip),
+               nominal_length_mm, axis_height_when_lying (approximate, informational),
+               generator version and catalogue hash
+- preview.png  small orthographic render (front + top) with keypoints drawn, for visual review
+
+LOCAL FRAME
+Screw axis along +z, bearing face (underside of head) at z = 0, head towards +z, tip towards -z.
+For countersunk screws the bearing is the cone; still put head_top at the top flat face and define
+the nominal length head_top-to-tip as in CLAUDE.md. Nuts/washers/T-nuts: centred at origin, axis z.
+
+GEOMETRY REQUIREMENTS
+- Heads per family: cylinder with chamfer + hexagon socket (DIN 912), hex with chamfered corners
+  and washer face (DIN 933), dome with hex socket (ISO 7380), 90 deg cone with hex socket (DIN 7991).
+- Threads: real helical ISO metric thread profile (60 deg, coarse pitch from catalogue), with the
+  thread run-out and a chamfered tip; DIN 912 partially threaded per thread length b with a plain
+  shank above it. Thread quality matters because threads are visually distinctive at 11.7 px/mm.
+  Provide a level-of-detail setting (segments per turn, radial segments) in config; default chosen
+  so an M10x80 stays under ~200k triangles.
+- Nuts: hex with internal thread (simplified helical or ridged bore), chamfers both sides; nyloc
+  with the nylon insert ring as a separate material slot.
+- Washers: flat annulus with small edge rounding.
+- T-nuts: slide-in (rectangular block with step) and drop-in (rotating hammer/roll-in shape) built
+  from the catalogue outline dims; threaded bore.
+- Material slots: assign named slots ("body", "insert") so tool 05 can apply finishes.
+- Mesh must be watertight and manifold; dimensions must match the catalogue within 0.01 mm
+  (check bounding box, head diameter, overall length programmatically).
+
+STEP / EXTERNAL CAD ROUTE
+If a catalogue part has source: step, convert the STEP file to a mesh (use cadquery or
+OCP/pythonocc if available; otherwise document the manual conversion route to STL and load that),
+rescale to mm, align it to the local frame convention (ask the user for the axis if it cannot be
+inferred), generate the collision proxy from its convex decomposition (coacd or trimesh's
+convex_decomposition if available, else convex hull), and require keypoints to be given in the
+catalogue entry.
+
+CODE (src/screwsynth/partgen/)
+- profiles.py   thread profile, chamfers, head shapes as 2D profiles
+- builders.py   one builder per family
+- collision.py  proxy generation
+- keypoints.py
+- checks.py     dimension and mesh validity checks
+- cli.py (entry point "screwsynth-partgen"):
+    build [--all | --family F | --id ID] [--lod low|med|high] [--force]
+    check [--all]          (re-run checks on existing assets)
+    preview --id ID        (regenerate preview.png)
+    clean
+  Builds are incremental: skip parts whose catalogue entry and generator version are unchanged
+  (use the hash in part.json). Use multiprocessing for --all.
+
+TESTS
+- For a sample of parts from every family: watertight, correct overall length, head diameter,
+  across-flats, thread major diameter within tolerance; keypoint distances equal nominal length.
+- Collision proxy fully contains no less than 95% of render-mesh volume and is under 500 triangles.
+
+ACCEPTANCE
+- `screwsynth-partgen build --all` produces assets for every enabled part with a summary table
+  (parts built, skipped, failed, triangle counts).
+- A contact-sheet image tools/partgen/contact_sheet.png showing one size of each family.
+- README with usage, the frame convention and how to add a builder for a new family.

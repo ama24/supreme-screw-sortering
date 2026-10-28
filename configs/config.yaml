@@ -1,0 +1,194 @@
+# screw-synth main configuration.
+# Units: lengths in millimetres, angles in degrees (code converts to radians).
+# Paths are relative to the repository root. Every tool reads only its own section plus `paths`,
+# `world_scale` and `seed`. Each tool's PR fills in its section; keys here are the defaults named in
+# docs/prompts/.
+
+# Global random seed. Every random choice derives from it; same seed -> same output.
+seed: 0
+
+# Blender scene scale: blender_units = mm * 0.001 * world_scale (Bullet is unstable at mm scale).
+world_scale: 10
+
+logging:
+  level: INFO
+
+paths:
+  catalogue: configs/catalogue.yaml
+  classes: configs/classes.yaml
+  calibration_dir: data/calibration
+  plate_dir: data/plate
+  assets_dir: data/assets
+  rest_poses_dir: data/rest_poses
+  real_dir: data/real
+  output_dir: output
+  datasets_dir: datasets
+
+# 01 catalogue — parts, sizes, lengths, finishes
+catalogue:
+  max_length_mm: 80          # longest screw length expanded from the standard length lists
+
+# 02 partgen — parametric meshes, collision proxies, keypoints
+partgen:
+  lod: med                   # low | med | high (thread segments per turn, radial segments)
+  max_triangles: 200000      # budget per part; thread resolution is reduced automatically above it
+  lod_levels:
+    # thread_segments: vertices per turn around the axis; axial_per_pitch: rings per thread pitch;
+    # round_segments: segments of heads, washers and other round parts
+    low: {thread_segments: 24, axial_per_pitch: 8, round_segments: 32}
+    med: {thread_segments: 40, axial_per_pitch: 12, round_segments: 64}
+    high: {thread_segments: 64, axial_per_pitch: 16, round_segments: 96}
+  collision_segments: 16     # sides of the cylindrical collision pieces (vertices on the true radius)
+  tolerance_mm: 0.01         # dimension check tolerance
+  preview_px: 360            # height of each preview view in pixels
+  workers: 0                 # processes for `build --all` (0 = min(4, CPU count))
+
+# 03 calibration — Pi Camera 3 intrinsics, extrinsics, sensor profile
+calibration:
+  board:
+    squares_x: 9
+    squares_y: 7
+    square_mm: 15.0          # nominal; the solver takes the MEASURED size via --square-mm
+    marker_mm: 11.0
+    dictionary: DICT_5X5_100
+  target_rms_px: 0.5          # warn above this intrinsic reprojection RMS
+  min_corners: 12             # reject views with fewer ChArUco corners
+  blur_ratio: 0.4             # reject views sharper than this fraction of the median view
+  board_thickness_mm: 0.0     # paper + glass, so z = 0 lands on the TPU surface
+  working_area:               # 220 x 220 mm area in the plate frame (origin = board's first corner)
+    origin_mm: null           # [x, y] of the area's corner; null = centred on the board (dev only)
+    size_mm: [220, 220]
+    margin_mm: 5
+  roi_multiple: 32            # ROI width/height rounded up to a multiple of this
+  corner_marker_ids: []       # e.g. [10, 11, 12, 13]: ArUco markers at the plate corners (optional)
+  corner_marker_dictionary: DICT_4X4_50
+  corner_marker_mm: 20
+  validate_target_mm: 0.2
+  recheck_max_tilt_deg: 0.15
+  recheck_max_height_mm: 0.3
+
+# 04 restposes — stable resting poses
+restposes:
+  # trimesh computes exact (solid-angle) pose probabilities from the convex hull and centre of mass.
+  # com_samples > 1 additionally perturbs the centre of mass by com_sigma_mm and averages
+  # (about 0.08 s per sample and part; 1 = exact, deterministic, fast).
+  com_samples: 1
+  com_sigma_mm: 0.0
+  min_probability: 0.02      # poses below this are dropped, the rest renormalised
+  merge_tilt_deg: 1.0        # poses equal up to yaw/part symmetry within this tilt are merged
+  measurable_tilt_deg: 15    # screw poses with |axis tilt| <= this are "measurable"
+  validate_drops: 50         # drops per part for `compute --validate` (needs pybullet)
+  # Reweight pose categories (screws: side, standing_on_head, standing_on_tip; others: flat, edge).
+  # match: glob on part id, class or family; the last matching entry wins; weight 0 removes.
+  overrides: []
+  #  - {match: "DIN912*", category: standing_on_head, weight: 0}
+  #  - {match: "DIN125A*", category: edge, weight: 0}
+
+# 05 scenegen — BlenderProc rendering (see tools/scenegen/README.md for every key)
+scenegen:
+  # composition
+  objects: [15, 40]            # objects per normal scene
+  few_fraction: 0.1            # fraction of scenes with very few objects
+  few_objects: [1, 5]
+  crowded_fraction: 0.2        # fraction of crowded scenes where parts touch
+  crowded_objects: [30, 50]
+  crowded_gap_mm: -0.3         # footprints may overlap this much in crowded scenes (parts touch/lean)
+  touch_probability: 0.5       # crowded: chance a part is slid against an existing one
+  min_gap_mm: 1.0              # normal scenes: minimum gap between footprints
+  area_margin_mm: 3.0          # keep footprints this far inside the visible working area
+  max_place_tries: 60
+  balance_slack: 1             # draw among classes with count <= min count + slack
+  finish_weights: {}           # optional finish -> relative weight (default 1)
+  variants_per_layout: 1       # extra lighting variants of the same arrangement
+  keypoint_window_px: 2        # keypoint visibility: own pixels searched within this radius
+  nominal_camera:              # --nominal-camera (until real calibration exists)
+    focal_length_mm: 4.74
+    pixel_size_um: 1.4
+    resolution: [4608, 2592]
+    height_mm: 300
+  physics:
+    drop_mm: 0.05              # start this far above the rest pose
+    min_time: 0.4              # seconds of simulation (short settle)
+    max_time: 1.5
+    check_interval: 0.2
+    substeps: 20
+    solver_iters: 20
+    friction: 0.6
+    angular_damping: 0.3
+    linear_damping: 0.1
+    collision_margin_mm: 0.05
+  discard:
+    max_lift_mm: 0.3           # lowest point higher than this -> stacked on another part
+    max_move_mm: 15.0          # moved further than this during the settle
+    below_plate_mm: 1.0        # fell through the plate
+  render:
+    device: OPTIX
+    samples: 64                # max samples (adaptive sampling stops earlier)
+    noise_threshold: 0.02
+    denoiser: OPTIX            # OPTIX | INTEL | none
+    resolution_scale: 1.0      # 1.0 = full ROI resolution
+    max_bounces: 6
+    diffuse_bounces: 3
+    glossy_bounces: 4
+    transmission_bounces: 2
+    exposure: [0.0, 0.0]       # EV jitter range (tool 06 also jitters exposure)
+    depth: false               # also save depth.npy
+  preview:
+    scenes: 10
+    resolution_scale: 0.25
+    samples: 16
+  plate:
+    thickness_mm: 1.75
+    grid: 24                   # UV grid resolution of the plate (perspective-correct texture)
+    roughness: [0.6, 0.9]
+    bump_strength: [0.0, 0.15] # print lines
+    line_pitch_mm: 0.4
+    solid_colour_probability: 0.1   # domain randomisation: solid plate colour instead of plate_empty.png
+    solid_colours: [[0.12, 0.35, 0.65], [0.15, 0.5, 0.25], [0.6, 0.15, 0.15], [0.5, 0.5, 0.5]]
+  shroud:
+    colour: [0.02, 0.02, 0.02]
+    half_width_mm: 220
+    height_mm: 420
+  lights:
+    panel_size_mm: [250, 400]
+    height_mm: [320, 380]
+    offset_mm: [0, 40]
+    energy_w: [40, 120]        # area light power in Blender units (world_scale 10); tune with tool 06 compare
+    colour_temperature_k: [5000, 6500]
+    fill_world_strength: [0.0, 0.05]
+  wear: {scratches: 0.3, grime: 0.2, fingerprints: 0.1}   # probability per instance
+  materials: {}                # override/extend presets, e.g. zinc_clear: {roughness: [0.1, 0.3]}
+  insert_colours: {insert_blue: 0.7, insert_white: 0.3}   # nyloc insert preset -> weight
+
+# 06 postprocess — camera and sensor simulation (each step: enabled, probability, ranges)
+postprocess:
+  distortion: {enabled: true, rgb_interpolation: linear}     # linear | cubic | lanczos; mask always nearest
+  vignetting: {enabled: true, probability: 1.0, strength: [0.8, 1.2], fallback_k: 0.25}  # flat-field strength jitter
+  blur: {enabled: true, probability: 1.0, sigma_px: [0.3, 0.9]}  # Gaussian sigma at full ROI resolution
+  chromatic_aberration: {enabled: false, probability: 0.5, scale: [0.9995, 1.0005]}
+  colour: {enabled: true, probability: 1.0, gain: [0.9, 1.1], wb: [0.96, 1.04], gamma: [0.95, 1.05], match_plate: true}
+  noise: {enabled: true, probability: 1.0, scale: [0.8, 1.2], fixed_pattern: 0.0, fallback: {a: 0.5, b: 2.0}}
+  compression: {enabled: true, production_format: png, jpeg_probability: 0.2, quality: [80, 97]}
+  workers: 0                 # 0 = min(4, CPUs)
+
+# 07 labels — dataset export
+labels:
+  stage1_imgsz: 1024           # stage-1 images: ROI downscaled so the longest side is this
+  image_format: jpg            # exported stage-1 images (jpg q95 or png)
+  min_visible_fraction: 0.25   # drop objects less visible than this (visible / alone pixels)
+  min_area_px: 60              # ... or with fewer visible pixels (full resolution)
+  polygon_tolerance_px: 0.7    # Douglas-Peucker tolerance at full resolution
+  polygon_min_points: 4
+  multi_piece: merge           # split visible masks: merge (zero-width bridges) | largest
+  crop_size_px: 384            # stage-2 measurement crops (full resolution)
+  crop_mode: fixed             # fixed | scaled (side = max(crop_size, margin * object size), resized)
+  crop_margin: 1.2
+  split: {train: 0.9, val: 0.1}
+  min_instances_per_class: 3000
+  val_real: null               # e.g. ../../real/val_real/images/val  (written as val_real in the yaml)
+
+# 08 train — stage 1, stage 2, measurement
+train: {}
+
+# 09 realdata — real captures and sim-to-real
+realdata: {}

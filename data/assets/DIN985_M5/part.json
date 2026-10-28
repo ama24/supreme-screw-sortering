@@ -1,0 +1,107 @@
+{
+  "id": "DIN985_M5",
+  "class_name": "DIN985_M5",
+  "family": "DIN985",
+  "kind": "nut",
+  "shape": "nyloc_nut",
+  "size": "M5",
+  "length": null,
+  "pitch": 0.8,
+  "fully_threaded": null,
+  "dims": {
+    "s": 8.0,
+    "h": 5.0,
+    "m": 3.8,
+    "e": 8.79,
+    "d": 5.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.5
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -2.5
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 3236,
+    "triangles": 6472,
+    "watertight": true,
+    "volume_mm3": 182.12000618031993,
+    "area_mm2": 311.04435694460767,
+    "bbox_min": [
+      -4.618802070617676,
+      -4.0,
+      -2.5
+    ],
+    "bbox_max": [
+      4.618802070617676,
+      4.0,
+      2.5
+    ],
+    "center_of_mass": [
+      0.0028663294101926163,
+      0.004218932960535037,
+      -0.0709435807375716
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        6079
+      ],
+      "insert": [
+        6079,
+        6472
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 52
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "55924777ab8c4504"
+}

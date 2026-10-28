@@ -1,0 +1,49 @@
+PROMPT 04 — REST POSES TOOL
+===========================
+
+CONTEXT
+Read CLAUDE.md first. Parts lie in a single layer on the plate. Instead of dropping every part from
+a height in every scene (slow and unstable), we precompute once how each part naturally rests on a
+flat surface. Tool 05 then places parts using these poses and only runs a short physics settle.
+This tool runs in normal Python. Work in branch tool/restposes and open a pull request.
+
+INPUT
+data/assets/<part_id>/render.ply and collision.obj, part.json (from tool 02).
+
+METHOD
+1. Compute candidate stable poses with trimesh.poses.compute_stable_poses on the render mesh
+   (convex hull based; gives transforms and probabilities). Use enough samples for stable
+   probabilities (config, default 2000).
+2. Merge poses that differ only by rotation about the vertical axis (those are equivalent; the scene
+   generator randomises yaw anyway). Drop poses with probability below a threshold (config, default
+   0.02) and renormalise.
+3. Sanity-check physically plausible results: a DIN 912 screw should mostly lie on its side,
+   tilted because the head is wider than the shank; a nut either flat or on an edge; a washer flat;
+   a countersunk screw rocking on its cone; a short screw may also stand on its head. Report the
+   tilt angle of the screw axis for each pose.
+4. Optional validation mode: drop each part N times (default 50) from random orientations in a
+   simple physics sim (pybullet if installable, else skip with a warning) and compare the empirical
+   pose distribution with step 1. Report disagreements.
+5. Allow manual override per family in config: e.g. probability of "standing on head" set to 0, or
+   reweighting, since my real arrangement may differ from pure physics (screws are spread by hand
+   or by the machine).
+
+OUTPUT
+data/rest_poses/<part_id>.json: list of poses, each with a 4x4 transform from the part's local frame
+to the plate frame (z = 0 is the plate, part resting on it, yaw = 0), probability, axis tilt in
+degrees, height of the screw axis above the plate at head and tip (mm), and a flag "measurable"
+(true when the screw axis is close to parallel to the plate, config threshold default 15 deg).
+These heights are what the measurement stage later uses for parallax correction, so store them
+precisely.
+
+CLI (entry point "screwsynth-restposes"): compute [--all|--id ID] [--validate], show --id ID
+(renders a small image of each pose with its probability), summary (table per family).
+
+TESTS
+- Washer has one dominant flat pose; hex nut has flat and edge poses; DIN 912 dominant pose tilt
+  matches the analytic value atan((dk - d) / 2 / L_effective) within a few degrees.
+- Every stored transform puts the lowest vertex at z = 0 (within 1e-6 mm).
+
+ACCEPTANCE
+- Poses for every enabled part, a summary table and a contact sheet of poses per family.
+- README explaining the method and the override options.

@@ -1,0 +1,112 @@
+{
+  "id": "DIN933_M5x25",
+  "class_name": "DIN933_M5",
+  "family": "DIN933",
+  "kind": "screw",
+  "shape": "hex",
+  "size": "M5",
+  "length": 25.0,
+  "pitch": 0.8,
+  "fully_threaded": true,
+  "dims": {
+    "s": 8.0,
+    "k": 3.5,
+    "e": 8.79,
+    "dw": 6.88,
+    "c": 0.5,
+    "d": 5.0
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "zinc_yellow",
+    "stainless_a2",
+    "stainless_a4",
+    "plain_steel",
+    "brass",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": 25.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        3.5
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -25.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 4.0,
+    "tip": 2.5
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 15307,
+    "triangles": 30610,
+    "watertight": true,
+    "volume_mm3": 582.7223167256724,
+    "area_mm2": 770.1516650974295,
+    "bbox_min": [
+      -4.618802070617676,
+      -4.0,
+      -25.0
+    ],
+    "bbox_max": [
+      4.618802070617676,
+      4.0,
+      3.5
+    ],
+    "center_of_mass": [
+      6.290890129695909e-05,
+      0.0004206805035884442,
+      -7.906531422953897
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        30610
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 80
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "bdf49caa22dc5679"
+}

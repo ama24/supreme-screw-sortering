@@ -1,0 +1,75 @@
+PROMPT 08 — TRAINING, MEASUREMENT AND INFERENCE TOOL
+====================================================
+
+CONTEXT
+Read CLAUDE.md first. Datasets come from tool 07: a stage-1 segmentation dataset at 1024 px and a
+stage-2 measurement-crop dataset at full resolution. This tool trains both stages with Ultralytics
+YOLO, implements the length measurement with parallax correction and snapping to standard lengths,
+runs inference on real images and evaluates. Training hardware: RTX 2070 Super, 8 GB VRAM. Work in
+branch tool/train and open a pull request.
+
+STAGE 1: DETECT + SEGMENT + CLASSIFY
+- Ultralytics YOLO segmentation model, current release (check the installed version and use its
+  current model names; start with the nano and small variants), imgsz 1024, pretrained weights.
+- Batch size auto-fit to 8 GB; mixed precision; cache images if RAM allows.
+- Augmentation suited to a fixed overhead camera: rotations (any angle), flips, small scale jitter
+  only (+/-10%, the scale is fixed in reality), HSV jitter, no perspective/shear, mosaic on with
+  close_mosaic near the end.
+- Validate on the synthetic val split AND on val_real when present; real mAP is the metric that
+  matters and is reported first.
+- Config-driven experiments: configs/train/*.yaml; every run logs its config, dataset stats and
+  git commit.
+
+STAGE 2: MEASUREMENT
+Implement two measurement methods and compare them on the same data:
+A) Keypoint model: YOLO pose trained on the measurement-crop dataset (3 keypoints: head_top,
+   bearing, tip).
+B) Classical: inside the full-resolution crop, use the stage-1 mask to find the screw axis
+   (principal axis of the mask), then refine the tip and the head/bearing positions with sub-pixel
+   edge profiles along the axis.
+For both:
+- Undistort the image points with the calibration (K, distortion).
+- Parallax correction: back-project each point as a ray from the camera and intersect it with the
+  horizontal plane at the correct height above the plate (axis height at the head and at the tip,
+  from the part's rest-pose geometry; the class tells us the size, and the rest-pose model gives the
+  heights as a function of length; iterate once: estimate length -> heights -> recompute length).
+- Nominal length = bearing-to-tip for DIN 912, DIN 933, ISO 7380; head_top-to-tip for DIN 7991.
+- Correct for the axis tilt of the resting pose (3D distance, not 2D).
+- Snap to the nearest enabled standard length for that class; output the raw mm value, the snapped
+  length, the residual and a confidence (low when the residual is near half the gap between adjacent
+  lengths, when the screw is not "measurable", or when keypoints disagree).
+- Also estimate thread diameter from the mask width at full resolution as a consistency check
+  against the stage-1 size class; flag disagreements.
+
+INFERENCE PIPELINE
+`screwsynth-infer --image path [--save-vis]`: load calibration, crop the ROI, run stage 1 at 1024,
+map detections back to full resolution, run stage 2 on each screw crop, output JSON (per object:
+class, size, length raw/snapped, confidence, polygon, box, keypoints, position on the plate in mm
+and orientation angle for a future pick-and-place head) and a visualisation image. Also export
+stage 1 to ONNX and report CPU latency, so we know whether inference could run on the Pi or must run
+on the PC.
+
+EVALUATION
+`screwsynth-eval`: on a labelled real set (tool 09): detection/segmentation mAP per class, confusion
+matrix between sizes (M2 vs M2.5 etc.), length accuracy (exact-match rate after snapping, mean and
+max absolute error in mm before snapping, per family and per size), and a list of the worst cases
+with images. Same on synthetic val for comparison (sim-to-real gap report).
+
+DATA-SIZE LEARNING CURVE
+`screwsynth-train curve`: train stage 1 on 10/25/50/100% of the dataset (short schedules) and plot
+real-val mAP against dataset size, so we can decide whether rendering more data is worth it.
+
+FINE-TUNING ON REAL DATA
+Option to fine-tune the best synthetic model on a small real labelled set with frozen early layers
+and a low learning rate, and to compare before/after on held-out real images.
+
+TESTS
+- Parallax and tilt correction on synthetic geometry: a screw of known length at known heights,
+  projected with the calibrated camera, is measured back within 0.05 mm.
+- Snapping logic with edge cases (exactly between two lengths, length not in the enabled list).
+- Inference pipeline runs end to end on one synthetic image with a tiny dummy model (slow test).
+
+ACCEPTANCE
+- Training commands, inference and evaluation documented in README with expected runtimes on the
+  RTX 2070 Super.
+- Measurement method comparison (A vs B) reported on synthetic data, with real data once available.

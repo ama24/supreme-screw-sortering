@@ -1,0 +1,111 @@
+{
+  "id": "DIN912_M2.5x6",
+  "class_name": "DIN912_M2.5",
+  "family": "DIN912",
+  "kind": "screw",
+  "shape": "socket_cap",
+  "size": "M2.5",
+  "length": 6.0,
+  "pitch": 0.45,
+  "fully_threaded": true,
+  "dims": {
+    "dk": 4.5,
+    "k": 2.5,
+    "s": 2.0,
+    "t": 1.1,
+    "b": 17.0,
+    "full_thread_max_length": 20.0,
+    "d": 2.5,
+    "ds": 2.5
+  },
+  "finishes": [
+    "black_oxide",
+    "zinc_clear",
+    "stainless_a2",
+    "stainless_a4",
+    "nylon_white",
+    "nylon_black"
+  ],
+  "nominal_length_mm": 6.0,
+  "nominal_length_mode": "bearing_to_tip",
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.5
+      ],
+      "labelled": true
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": true
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -6.0
+      ],
+      "labelled": true
+    }
+  },
+  "axis_height_when_lying": {
+    "head": 2.25,
+    "tip": 1.25
+  },
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 6750,
+    "triangles": 13496,
+    "watertight": true,
+    "volume_mm3": 58.46111497638153,
+    "area_mm2": 137.4673181361906,
+    "bbox_min": [
+      -2.25,
+      -2.25,
+      -6.0
+    ],
+    "bbox_max": [
+      2.25,
+      2.25,
+      2.5
+    ],
+    "center_of_mass": [
+      0.0002366744357047317,
+      0.0003220305020757887,
+      -0.4845877933633677
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        13496
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 120
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "0f9852799351dcdd"
+}
