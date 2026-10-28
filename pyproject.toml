@@ -17,7 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 catalogue = ["ruamel.yaml>=0.18"]
 partgen = ["numpy>=1.24", "trimesh>=4.0", "manifold3d>=3.0", "pillow>=10.0", "networkx>=3.0", "scipy>=1.10"]
-calib = ["opencv-contrib-python>=4.8"]
+calib = ["opencv-contrib-python>=4.8", "matplotlib>=3.7", "pillow>=10.0"]
 train = ["ultralytics>=8.3"]
 dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5", "ruamel.yaml>=0.18"]
 
@@ -25,6 +25,7 @@ dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5", "ruamel.yaml>=0.18"]
 screwsynth-catalogue = "screwsynth.catalogue.cli:main"
 screwsynth-partgen = "screwsynth.partgen.cli:main"
 screwsynth-restposes = "screwsynth.restposes.cli:main"
+screwsynth-calib = "screwsynth.calibration.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/screwsynth"]

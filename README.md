@@ -20,7 +20,7 @@ Project conventions are in [CLAUDE.md](CLAUDE.md). The build guide, with one pro
 |----|-------------|---------|--------|
 | 01 | catalogue   | `catalogue.yaml` of every part + validator + CLI to add parts | done |
 | 02 | partgen     | parametric mesh generator: render mesh, collision proxy, keypoints, `part.json` | done |
-| 03 | calibration | Pi capture scripts, ChArUco board, intrinsics, extrinsics, sensor profile | TODO |
+| 03 | calibration | Pi capture scripts, ChArUco board, intrinsics, extrinsics, sensor profile | done |
 | 04 | restposes   | stable resting poses of each part (precomputed once) | done |
 | 05 | scenegen    | BlenderProc scene generation and rendering (RGB + instance mask + `meta.json`) | TODO |
 | 06 | postprocess | lens distortion (RGB and mask), noise, vignetting, compression | TODO |

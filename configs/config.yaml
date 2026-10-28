@@ -51,9 +51,21 @@ calibration:
     square_mm: 15.0          # nominal; the solver takes the MEASURED size via --square-mm
     marker_mm: 11.0
     dictionary: DICT_5X5_100
-  target_rms_px: 0.5
-  board_thickness_mm: 0.0    # paper + glass, so z = 0 lands on the TPU surface
-  working_area_mm: [220, 220]
+  target_rms_px: 0.5          # warn above this intrinsic reprojection RMS
+  min_corners: 12             # reject views with fewer ChArUco corners
+  blur_ratio: 0.4             # reject views sharper than this fraction of the median view
+  board_thickness_mm: 0.0     # paper + glass, so z = 0 lands on the TPU surface
+  working_area:               # 220 x 220 mm area in the plate frame (origin = board's first corner)
+    origin_mm: null           # [x, y] of the area's corner; null = centred on the board (dev only)
+    size_mm: [220, 220]
+    margin_mm: 5
+  roi_multiple: 32            # ROI width/height rounded up to a multiple of this
+  corner_marker_ids: []       # e.g. [10, 11, 12, 13]: ArUco markers at the plate corners (optional)
+  corner_marker_dictionary: DICT_4X4_50
+  corner_marker_mm: 20
+  validate_target_mm: 0.2
+  recheck_max_tilt_deg: 0.15
+  recheck_max_height_mm: 0.3
 
 # 04 restposes — stable resting poses
 restposes:
