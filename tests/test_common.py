@@ -74,6 +74,13 @@ def test_json_round_trip(tmp_path):
     assert list(path.parent.iterdir()) == [path]  # no temp files left behind
 
 
+def test_json_writes_config_sections(tmp_path):
+    """Config hands out nested sections as Config objects; they must serialise like dicts."""
+    cfg = Config({"postprocess": {"blur": {"sigma_px": [0.3, 0.9]}}})
+    write_json(tmp_path / "m.json", {"blur": cfg.get("postprocess.blur")})
+    assert read_json(tmp_path / "m.json") == {"blur": {"sigma_px": [0.3, 0.9]}}
+
+
 def test_yaml_round_trip(tmp_path):
     data = {"b": [1, 2], "a": {"x": "M2.5"}}
     path = tmp_path / "x.yaml"

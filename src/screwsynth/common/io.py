@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,8 @@ def _json_default(obj: Any) -> Any:
         return obj.item()
     if isinstance(obj, Path):
         return obj.as_posix()
+    if isinstance(obj, Mapping):  # e.g. a config section (screwsynth.common.config.Config)
+        return dict(obj)
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serialisable")
 
 
