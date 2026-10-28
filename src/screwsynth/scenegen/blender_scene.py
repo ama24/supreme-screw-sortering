@@ -436,11 +436,12 @@ def place_instance(
 
 
 def assign_materials(obj, materials: Mapping[str, bpy.types.Material]) -> None:
-    bobj = obj.blender_obj
-    for i, slot in enumerate(bobj.material_slots):
-        slot.link = "OBJECT"
+    # on the mesh (each instance has its own, non-linked), not on the object: BlenderProc's
+    # segmentation pass swaps obj.data.materials, and an object-linked material would override it
+    mesh_mats = obj.blender_obj.data.materials
+    for i in range(len(mesh_mats)):
         name = SLOTS[i] if i < len(SLOTS) else "body"
-        slot.material = materials.get(name, materials["body"])
+        mesh_mats[i] = materials.get(name, materials["body"])
 
 
 def simulate(physics: Mapping[str, Any]) -> None:
