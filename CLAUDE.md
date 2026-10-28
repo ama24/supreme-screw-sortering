@@ -31,13 +31,19 @@ the tool you are working on before changing it.
 - Finishes: black oxide, zinc plated (clear/yellow), stainless A2/A4, plain steel, brass, nylon.
   NO aluminium and no anodised colours. Finish is a visual variation only, never a class.
   Magnetic vs non-magnetic is NOT distinguished.
-- Arrangement: single layer, parts lying on the plate, may touch, no piles.
+- Arrangement: a handful of parts thrown onto the plate and spread by hand: clumps, parts
+  touching, some parts lying on top of others (mostly a single layer, no real piles). A lip just
+  outside the camera frame stops parts, so parts are often cut by the image border.
+- Operation: a picker removes one part at a time and a new photo is taken after every removal.
 
 ## Model design
 - Class = family + size, e.g. DIN912_M4. Length is NOT a class; it is measured.
 - Stage 1: YOLO segmentation model on the ROI downscaled to 1024 px (detect + segment + classify).
 - Stage 2: measurement on full-resolution crops around each detection (keypoints and/or sub-pixel
   edges), parallax-corrected using known part geometry, snapped to the nearest standard length.
+  Only parts that are free (nothing on them), lying on the plate and fully visible are measured;
+  the others are picked or re-imaged later, once the parts on top are gone (ground truth:
+  `free`, `support`, `lying_on_it`, `measurable` in meta.json).
 - Required accuracy: exact standard length (adjacent lengths may differ by only 1 mm for M2).
 
 ## Pipeline (one tool per step, each in tools/<name> and src/screwsynth/<name>)

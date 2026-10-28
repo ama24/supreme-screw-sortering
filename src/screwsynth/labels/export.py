@@ -334,6 +334,12 @@ def export(
                         "instance_id": ins.obj["instance_id"],
                         "part_id": ins.obj["part_id"],
                         "finish": ins.obj["finish"],
+                        # for the picker and the measurement (tool 08); absent in older renders
+                        "attributes": {
+                            k: ins.obj[k]
+                            for k in ("support", "free", "lying_on_it", "measurable")
+                            if k in ins.obj
+                        },
                     }
                 )
                 ann_id += 1

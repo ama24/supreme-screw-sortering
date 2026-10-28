@@ -120,6 +120,9 @@ def build_plan(recipe: Recipe, base: dict[str, Any] | None = None) -> Plan:
     variants = max(1, int(get_path(cfg, "scenegen.variants_per_layout", 1) or 1))
 
     def render_progress() -> tuple[int, int]:
+        done = run_dir / "layouts_done"  # one marker per finished layout (with all its photos)
+        if done.is_dir():
+            return sum(1 for _ in done.iterdir()), p.scenes
         return _count(run_dir / "scenes"), p.scenes * variants
 
     def postprocess() -> list[list[str]]:
