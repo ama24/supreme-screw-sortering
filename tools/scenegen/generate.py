@@ -1,8 +1,10 @@
+# BlenderProc requires its import to be the first non-comment line, before any docstring or other import.
+# isort: skip_file
+import blenderproc as bproc  # noqa: F401
+
 import argparse
 import sys
 from pathlib import Path
-
-import blenderproc as bproc  # noqa: F401  (BlenderProc requires this to be the first import)
 
 USAGE = """Render synthetic scenes of fasteners on the TPU plate.
 

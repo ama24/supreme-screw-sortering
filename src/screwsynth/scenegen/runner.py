@@ -245,6 +245,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                     part.rest["poses"][pose_i]["transform"]
                 )
                 obj, children = library.instance(info.id, part.meta)
+                objs.append(obj)  # registered at once so a failure below still cleans it up
                 bs.place_instance(obj, children, T0, s, part.mass_kg(finish), physics)
                 material = {
                     "body": sample_material(finish, sg.get("materials"), rng, sg.get("wear"))
@@ -260,9 +261,8 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                     k: bs.make_material(f"{info.id}_{k}_{len(objs)}", v)
                     for k, v in material.items()
                 }
+                mats += [m.name for m in bmats.values()]
                 bs.assign_materials(obj, bmats)
-                objs.append(obj)
-                mats += list(bmats.values())
                 instances.append(
                     {
                         "info": info,
@@ -377,6 +377,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                 f.write(json.dumps({"scene": idx, "error": str(exc)}) + "\n")
         finally:
             bs.remove(objs, mats)
+            log.debug("datablocks after scene %06d: %s", idx, bs.datablock_counts())
     if stats["seconds"]:
         log.info(
             "rendered %d scenes, %.1f s/scene (mean), skipped %d, failed %d",

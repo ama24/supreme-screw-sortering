@@ -175,6 +175,13 @@ class AssetLibrary:
         obj.set_shading_mode("AUTO", 35)
         mesh = obj.get_mesh()
         slots = meta["mesh"].get("material_slots", {"body": [0, len(mesh.polygons)]})
+        # the PLY loader adds a default material; drop it (and the datablock) so slots follow SLOTS
+        loader_mats = [m.name for m in mesh.materials if m is not None]
+        mesh.materials.clear()
+        for name in loader_mats:
+            m = bpy.data.materials.get(name)
+            if m is not None and m.users == 0:
+                bpy.data.materials.remove(m)
         for _ in SLOTS[: max(1, len(slots))]:
             mesh.materials.append(None)
         if "insert" in slots:
@@ -225,8 +232,9 @@ class StaticScene:
         tex_path = Path(calib_dir) / "plate_empty.png"
         if cam.source == "calibration" and tex_path.is_file():
             self.texture = bpy.data.images.load(str(tex_path))
-        self.plate_mat = self._plate_material()
-        self.plate.blender_obj.data.materials.append(self.plate_mat)
+        plate_mat = self._plate_material()
+        self.plate_mat_name = plate_mat.name
+        self.plate.blender_obj.data.materials.append(plate_mat)
         self.plate.set_cp("category_id", 0)
         th = float(pc.get("thickness_mm", 1.75))
         self.collider = bproc.object.create_primitive("CUBE")
@@ -250,7 +258,7 @@ class StaticScene:
         bed_mat.set_principled_shader_value("Base Color", [0.25, 0.25, 0.26, 1])
         bed_mat.set_principled_shader_value("Metallic", 0.8)
         bed_mat.set_principled_shader_value("Roughness", 0.5)
-        bed.replace_materials(bed_mat.blender_obj)
+        bed.replace_materials(bed_mat)
         bed.set_cp("category_id", 0)
         sc = cfg.get("shroud", {}) or {}
         hw = float(sc.get("half_width_mm", 220.0))
@@ -262,7 +270,7 @@ class StaticScene:
         smat = bproc.material.create("shroud")
         smat.set_principled_shader_value("Base Color", [*sc.get("colour", [0.02, 0.02, 0.02]), 1])
         smat.set_principled_shader_value("Roughness", 0.9)
-        self.shroud.replace_materials(smat.blender_obj)
+        self.shroud.replace_materials(smat)
         self.shroud.set_cp("category_id", 0)
         self.light = bproc.types.Light("AREA", name="panel")
         self.light.blender_obj.data.shape = "RECTANGLE"
@@ -297,19 +305,20 @@ class StaticScene:
         mat.use_nodes = True
         nt = mat.node_tree
         bsdf = nt.nodes.get("Principled BSDF")
-        self.plate_bsdf = bsdf
-        self.plate_rgb = nt.nodes.new("ShaderNodeRGB")
+        bsdf.name = "plate_bsdf"
+        rgb = nt.nodes.new("ShaderNodeRGB")
+        rgb.name = "plate_rgb"
         if self.texture is not None:
             img = nt.nodes.new("ShaderNodeTexImage")
             img.image = self.texture
             img.interpolation = "Cubic"
-            _, self.plate_mix, m_a, m_b, m_out = _mix_rgba(nt)
+            mix, _, m_a, m_b, m_out = _mix_rgba(nt)
+            mix.name = "plate_mix"
             nt.links.new(img.outputs["Color"], m_a)
-            nt.links.new(self.plate_rgb.outputs["Color"], m_b)
+            nt.links.new(rgb.outputs["Color"], m_b)
             nt.links.new(m_out, _input(bsdf, ["Base Color"]))
         else:
-            self.plate_mix = None  # factor socket of the texture/solid colour mix
-            nt.links.new(self.plate_rgb.outputs["Color"], _input(bsdf, ["Base Color"]))
+            nt.links.new(rgb.outputs["Color"], _input(bsdf, ["Base Color"]))
         # print lines: fine waves along x as a bump
         coord = nt.nodes.new("ShaderNodeTexCoord")
         wave = nt.nodes.new("ShaderNodeTexWave")
@@ -318,10 +327,11 @@ class StaticScene:
         pitch = float((self.cfg.get("plate", {}) or {}).get("line_pitch_mm", 0.4)) * self.s
         _set(wave, ["Scale"], 1.0 / max(pitch, 1e-6) / (2 * math.pi))
         nt.links.new(coord.outputs["Object"], wave.inputs["Vector"])
-        self.bump = nt.nodes.new("ShaderNodeBump")
-        _set(self.bump, ["Distance"], 0.02 * self.s)
-        nt.links.new(wave.outputs["Fac"], self.bump.inputs["Height"])
-        nt.links.new(self.bump.outputs["Normal"], _input(bsdf, ["Normal"]))
+        bump = nt.nodes.new("ShaderNodeBump")
+        bump.name = "plate_bump"
+        _set(bump, ["Distance"], 0.02 * self.s)
+        nt.links.new(wave.outputs["Fac"], bump.inputs["Height"])
+        nt.links.new(bump.outputs["Normal"], _input(bsdf, ["Normal"]))
         return mat
 
     def jitter(self, rng: random.Random) -> dict[str, Any]:
@@ -330,8 +340,9 @@ class StaticScene:
         lc = self.cfg.get("lights", {}) or {}
         rough = rng.uniform(*pc.get("roughness", [0.6, 0.9]))
         bump = rng.uniform(*pc.get("bump_strength", [0.0, 0.15]))
-        _set(self.plate_bsdf, ["Roughness"], rough)
-        _set(self.bump, ["Strength"], bump)
+        nodes = bpy.data.materials[self.plate_mat_name].node_tree.nodes
+        _set(nodes["plate_bsdf"], ["Roughness"], rough)
+        _set(nodes["plate_bump"], ["Strength"], bump)
         solid = self.texture is None or rng.random() < float(
             pc.get("solid_colour_probability", 0.1)
         )
@@ -339,9 +350,11 @@ class StaticScene:
         base = list(rng.choice(colours)) if solid else [0.5, 0.5, 0.5]
         if solid:
             base = [min(1.0, max(0.0, c * rng.uniform(0.85, 1.15))) for c in base]
-        self.plate_rgb.outputs["Color"].default_value = (*base, 1.0)
-        if self.plate_mix is not None:
-            self.plate_mix.default_value = 1.0 if solid else 0.0
+        nodes["plate_rgb"].outputs["Color"].default_value = (*base, 1.0)
+        mix = nodes.get("plate_mix")
+        if mix is not None:  # factor of the texture/solid colour mix
+            fac = next(s for s in mix.inputs if s.name == "Factor" and s.type == "VALUE")
+            fac.default_value = 1.0 if solid else 0.0
         size = rng.uniform(*lc.get("panel_size_mm", [250, 400]))
         height = rng.uniform(*lc.get("height_mm", [320, 380]))
         off = lc.get("offset_mm", [0, 40])
@@ -426,7 +439,8 @@ def assign_materials(obj, materials: Mapping[str, bpy.types.Material]) -> None:
     bobj = obj.blender_obj
     for i, slot in enumerate(bobj.material_slots):
         slot.link = "OBJECT"
-        slot.material = materials.get(SLOTS[i], materials["body"])
+        name = SLOTS[i] if i < len(SLOTS) else "body"
+        slot.material = materials.get(name, materials["body"])
 
 
 def simulate(physics: Mapping[str, Any]) -> None:
@@ -448,13 +462,28 @@ def final_pose_mm(obj, s: float) -> np.ndarray:
     return T
 
 
-def remove(objs: Sequence[Any], materials: Sequence[bpy.types.Material]) -> None:
-    for o in objs:
-        for c in o.get_children():
-            c.delete()
-        o.delete()
-    for m in materials:
-        if m.name in bpy.data.materials:
+def datablock_counts() -> dict[str, int]:
+    """Objects, meshes and materials alive in Blender; constant from scene to scene if nothing leaks."""
+    d = bpy.data
+    return {"objects": len(d.objects), "meshes": len(d.meshes), "materials": len(d.materials)}
+
+
+def remove(objs: Sequence[Any], material_names: Sequence[str]) -> None:
+    # by name: BlenderProc may already have freed the materials, and touching a freed Python
+    # reference raises (or crashes Blender)
+    # BlenderProc's delete() leaves the mesh data behind; with non-linked duplicates that leaks
+    # every scene's meshes until Blender runs out of memory, so free them explicitly
+    every = [e.blender_obj for o in objs for e in (o, *o.get_children())]
+    mesh_names = {b.data.name for b in every if b.type == "MESH" and b.data is not None}
+    for b in every:
+        bpy.data.objects.remove(b, do_unlink=True)
+    for name in mesh_names:
+        m = bpy.data.meshes.get(name)
+        if m is not None and m.users == 0:
+            bpy.data.meshes.remove(m)
+    for name in material_names:
+        m = bpy.data.materials.get(name)
+        if m is not None:
             bpy.data.materials.remove(m)
 
 

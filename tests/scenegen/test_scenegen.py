@@ -276,6 +276,14 @@ def test_materials_sampled_in_range():
         sample_material("aluminium", None, rng)
 
 
+def test_generate_script_imports_blenderproc_first():
+    """`blenderproc run` refuses scripts whose first non-comment line is not the blenderproc import."""
+    text = (repo_root() / "tools" / "scenegen" / "generate.py").read_text(encoding="utf-8")
+    lines = [s.strip() for s in text.splitlines()]
+    first = next(s for s in lines if s and not s.startswith("#"))
+    assert first.startswith("import blenderproc")
+
+
 def test_insert_colour_weights():
     rng = random.Random(0)
     picks = Counter(pick_insert_finish(None, rng) for _ in range(2000))
