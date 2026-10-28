@@ -24,7 +24,7 @@ Project conventions are in [CLAUDE.md](CLAUDE.md). The build guide, with one pro
 | 04 | restposes   | stable resting poses of each part (precomputed once) | done |
 | 05 | scenegen    | BlenderProc scene generation and rendering (RGB + instance mask + `meta.json`) | implemented (Blender run pending) |
 | 06 | postprocess | lens distortion (RGB and mask), noise, vignetting, compression | done |
-| 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays | TODO |
+| 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays | done |
 | 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation | TODO |
 | 09 | realdata    | capture and label a real validation set, compare real vs synthetic | TODO |
 

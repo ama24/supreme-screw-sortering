@@ -172,12 +172,19 @@ postprocess:
 
 # 07 labels — dataset export
 labels:
-  stage1_imgsz: 1024
-  min_visible_fraction: 0.25
-  polygon_tolerance_px: 0.7
-  crop_size_px: 384
-  split: { train: 0.9, val: 0.1 }
+  stage1_imgsz: 1024           # stage-1 images: ROI downscaled so the longest side is this
+  image_format: jpg            # exported stage-1 images (jpg q95 or png)
+  min_visible_fraction: 0.25   # drop objects less visible than this (visible / alone pixels)
+  min_area_px: 60              # ... or with fewer visible pixels (full resolution)
+  polygon_tolerance_px: 0.7    # Douglas-Peucker tolerance at full resolution
+  polygon_min_points: 4
+  multi_piece: merge           # split visible masks: merge (zero-width bridges) | largest
+  crop_size_px: 384            # stage-2 measurement crops (full resolution)
+  crop_mode: fixed             # fixed | scaled (side = max(crop_size, margin * object size), resized)
+  crop_margin: 1.2
+  split: {train: 0.9, val: 0.1}
   min_instances_per_class: 3000
+  val_real: null               # e.g. ../../real/val_real/images/val  (written as val_real in the yaml)
 
 # 08 train — stage 1, stage 2, measurement
 train: {}
