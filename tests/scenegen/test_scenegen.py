@@ -18,10 +18,21 @@ from screwsynth.scenegen.groundtruth import (
     VISIBLE,
     discard_reason,
     keypoint_visibility,
+    object_meta,
+    occluders,
     silhouette_area,
+    silhouette_mask,
 )
 from screwsynth.scenegen.materials import DEFAULT_PRESETS, pick_insert_finish, sample_material
-from screwsynth.scenegen.placement import convex_hull_2d, inside_area, place, separation
+from screwsynth.scenegen.placement import (
+    ClumpSettings,
+    convex_hull_2d,
+    inside_area,
+    nearest_gaps,
+    place,
+    place_clumped,
+    separation,
+)
 
 # ----------------------------------------------------------------------------------- PNG
 
@@ -334,3 +345,135 @@ def test_blender_smoke(tmp_path):
     mask = read_png(scene / "instance.png")
     ids = {o["instance_id"] for o in meta["objects"]}
     assert set(np.unique(mask)) - {0} <= ids
+
+
+# ----------------------------------------------------------------------- clumped layouts
+
+
+def _mixed_hulls(n, seed=1):
+    rng = random.Random(seed)
+    out = []
+    for _ in range(n):
+        if rng.random() < 0.55:
+            d = rng.choice([2, 3, 4, 5, 6])
+            out.append(_rect(rng.choice([8, 12, 16, 20, 30]) + d, d))
+        else:
+            a = np.linspace(0, 2 * math.pi, 16, endpoint=False)
+            r = rng.choice([2.5, 3.5, 4.5, 6.0])
+            out.append(convex_hull_2d(np.c_[r * np.cos(a), r * np.sin(a)]))
+    return out
+
+
+AREA, BOUNDS = (3.0, 3.0, 217.0, 217.0), (-2.0, -2.0, 222.0, 222.0)
+
+
+def test_clumped_layers_and_bounds():
+    placed = place_clumped(_mixed_hulls(80), AREA, BOUNDS, random.Random(3))
+    assert len(placed) >= 70
+    layer1 = [p for p in placed if p.layer == 1]
+    layer2 = [p for p in placed if p.layer == 2]
+    assert layer2, "some parts land on top of others"
+    for i, a in enumerate(layer1):  # layer 1: never overlapping (touching allowed)
+        for b in layer1[i + 1 :]:
+            assert separation(a.footprint, b.footprint) >= -1e-6
+    for i, a in enumerate(layer2):  # at most two layers: tops never overlap each other
+        assert any(separation(a.footprint, b.footprint) < 0 for b in layer1)
+        for b in layer2[i + 1 :]:
+            assert separation(a.footprint, b.footprint) >= -1e-6
+    for p in placed:
+        assert inside_area(p.footprint, BOUNDS)
+        c = p.footprint.mean(axis=0)
+        assert AREA[0] <= c[0] <= AREA[2] and AREA[1] <= c[1] <= AREA[3]
+
+
+def test_clumped_is_denser_than_scattered_and_deterministic():
+    hulls = _mixed_hulls(60)
+    clumped = place_clumped(hulls, AREA, BOUNDS, random.Random(5))
+    scattered = place(hulls, AREA, random.Random(5), 1.0)
+    g_clump = nearest_gaps([p for p in clumped if p.layer == 1])
+    g_scat = nearest_gaps(scattered)
+    # in clumps the nearest neighbour is under 1 mm away (often touching), scattered ~5 mm
+    assert np.median(g_clump) < 1.0 and np.median(g_scat) > 4 * np.median(g_clump)
+    assert np.mean(g_clump < 0.3) > 0.1
+    again = place_clumped(hulls, AREA, BOUNDS, random.Random(5))
+    assert [(p.index, p.xy, p.layer) for p in again] == [(p.index, p.xy, p.layer) for p in clumped]
+
+
+def test_clump_settings_from_config():
+    st = ClumpSettings.from_config({"clumps": [2, 2], "spread_mm": [5, 5], "loose_fraction": 0})
+    assert st.clumps == (2, 2) and st.spread_mm == (5.0, 5.0) and st.loose_fraction == 0.0
+    assert st.overlap_probability == ClumpSettings().overlap_probability
+
+
+def test_plan_scene_clumped_kind():
+    cfg = {
+        "clumped_fraction": 1.0,
+        "few_fraction": 0,
+        "crowded_fraction": 0,
+        "clumped_objects": [40, 60],
+    }
+    plan = plan_scene(BalancedSampler(_parts()), cfg, random.Random(1))
+    assert plan.kind == "clumped" and 40 <= len(plan.parts) <= 60
+
+
+def test_occluders_free_and_measurable():
+    cam = cammod.nominal(scale=0.25)
+    lower = np.array([[x, y, z] for x in (100, 130) for y in (100, 104) for z in (0, 4.0)])
+    sil = silhouette_mask(cam, [lower])
+    total, inside = silhouette_area(cam, [lower])
+    instance = np.zeros((cam.resolution[1], cam.resolution[0]), np.uint16)
+    mask, x0, y0 = sil
+    ys, xs = np.nonzero(mask)
+    instance[ys + y0, xs + x0] = 1
+    # part 2 lies across the middle of part 1
+    instance[ys.min() + y0 : ys.max() + y0 + 1, xs.min() + x0 + 10 : xs.min() + x0 + 16] = 2
+    assert occluders(sil, instance, 1, min_px=5) == {2: int((instance == 2).sum())}
+    assert occluders(sil, instance, 1, min_px=10_000) == {}  # a sliver below the threshold
+    part = {
+        "id": "DIN912_M4x30",
+        "class_name": "DIN912_M4",
+        "kind": "screw",
+        "family": "DIN912",
+        "size": "M4",
+        "length": 30,
+        # on the part, clear of part 2 (which covers x ~ 104-106 or ~124-126, by image orientation)
+        "keypoints": {
+            "head_top": {"xyz": [120.0, 102.0, 2.0], "labelled": True},
+            "bearing": {"xyz": [117.0, 102.0, 2.0], "labelled": True},
+            "tip": {"xyz": [110.0, 102.0, 2.0], "labelled": True},
+        },
+    }
+    common = {
+        "inst_id": 1,
+        "part": part,
+        "class_id": 0,
+        "finish": "zinc_clear",
+        "material": {},
+        "T_plate": np.eye(4) @ np.diag([1, 1, 1, 1]),
+        "rest_pose_index": 0,
+        "measurable_tilt_deg": 90,
+        "cam": cam,
+        "alone_area": (total, inside),
+        "silhouette": sil,
+        "occlusion_min_px": 5,
+    }
+    covered = object_meta(instance=instance, **common)
+    assert covered["occluded_by"] == [2] and not covered["free"] and not covered["measurable"]
+    clear = object_meta(instance=(instance == 1).astype(np.uint16), **common)
+    assert clear["free"] and clear["measurable"] and clear["support"] == "plate"
+    on_parts = object_meta(instance=(instance == 1).astype(np.uint16), lowest_z_mm=3.0, **common)
+    assert on_parts["support"] == "parts" and not on_parts["measurable"]
+    # physically covered (from the 3D poses) is not free, even if nothing shows over it
+    held = object_meta(instance=(instance == 1).astype(np.uint16), lying_on_it=[7], **common)
+    assert held["lying_on_it"] == [7] and not held["free"] and not held["measurable"]
+    # a neighbour only leaning over it in the image does not make it un-free
+    leaning = object_meta(instance=instance, lying_on_it=[], **common)
+    assert leaning["free"] and leaning["occluded_by"] == [2]
+
+
+def test_discard_allows_stacking():
+    verts = np.array([[x, y, z] for x in (0, 10) for y in (0, 4) for z in (0, 4)], float)
+    T = np.eye(4)
+    T[:3, 3] = [100, 100, 3.0]  # resting 3 mm up, on another part
+    assert "stacked" in discard_reason(T, T, verts, AREA)
+    assert discard_reason(T, T, verts, AREA, allow_stacked=True) is None

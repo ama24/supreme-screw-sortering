@@ -280,6 +280,27 @@ class StaticScene:
         self.world_strength = 0.0
         bproc.renderer.set_world_background([1.0, 1.0, 1.0], 0.0)
 
+    def add_lip(self, bounds: Sequence[float], height_mm: float, thickness_mm: float) -> None:
+        """Invisible walls just outside the frame: the lip around the plate that stops parts."""
+        x0, y0, x1, y1 = bounds
+        t, h = thickness_mm, height_mm
+        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        walls = [
+            ((x0 - t / 2, cy), (t / 2, (y1 - y0) / 2 + t)),
+            ((x1 + t / 2, cy), (t / 2, (y1 - y0) / 2 + t)),
+            ((cx, y0 - t / 2), ((x1 - x0) / 2 + t, t / 2)),
+            ((cx, y1 + t / 2), ((x1 - x0) / 2 + t, t / 2)),
+        ]
+        self.lip = []
+        for (wx, wy), (hx, hy) in walls:
+            wall = bproc.object.create_primitive("CUBE")
+            wall.set_scale([hx * self.s, hy * self.s, h / 2 * self.s])
+            wall.set_location([wx * self.s, wy * self.s, h / 2 * self.s])
+            wall.enable_rigidbody(False, collision_shape="BOX", friction=0.6)
+            wall.hide(True)
+            wall.set_cp("category_id", 0)
+            self.lip.append(wall)
+
     def _plate_mesh(self, x0: float, y0: float, x1: float, y1: float, n: int):
         """Grid plane at z = 0 whose UVs map plate points to the undistorted ROI (plate_empty.png)."""
         xs, ys = np.linspace(x0, x1, n + 1), np.linspace(y0, y1, n + 1)
@@ -414,14 +435,26 @@ def _kelvin_rgb(t: float) -> list[float]:
 
 
 def place_instance(
-    obj, children, T_plate_mm: np.ndarray, s: float, mass_kg: float, physics: Mapping[str, Any]
+    obj,
+    children,
+    T_plate_mm: np.ndarray,
+    s: float,
+    mass_kg: float,
+    physics: Mapping[str, Any],
+    active: bool = True,
+    body: bool = True,
 ) -> None:
+    """Pose the part and give it a compound collision body: active parts are simulated, passive
+    ones (lying on the plate in a rest pose) are fixed obstacles. body=False: no collision body
+    at all (nothing that moves can reach it), which saves Blender's slow rigid-body setup."""
     T = np.array(T_plate_mm, dtype=float)
     T[:3, 3] *= s
     obj.set_local2world_mat(T)
+    if not body:
+        return
     margin = float(physics.get("collision_margin_mm", 0.05)) * s
     obj.enable_rigidbody(
-        True,
+        active,
         collision_shape="COMPOUND",
         collision_margin=margin,
         mass=mass_kg,
@@ -431,7 +464,7 @@ def place_instance(
     )
     for c in children:
         c.enable_rigidbody(
-            True,
+            active,
             collision_shape="CONVEX_HULL",
             collision_margin=margin,
             friction=float(physics.get("friction", 0.6)),

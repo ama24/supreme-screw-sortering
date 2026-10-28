@@ -182,7 +182,7 @@ class Runner:
     def _fresh(self) -> None:
         """Delete this dataset's previous render/postprocess/label outputs (not the shared assets)."""
         run_dir = self.plan.run_dir
-        for sub in ("scenes", "processed", "previews"):
+        for sub in ("scenes", "processed", "previews", "layouts_done"):
             shutil.rmtree(run_dir / sub, ignore_errors=True)
         for f in ("balance_state.json", "run_config.yaml", "failed.jsonl", "log.txt"):
             (run_dir / f).unlink(missing_ok=True)

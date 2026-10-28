@@ -48,7 +48,7 @@ class BalanceState:
 
 @dataclass
 class ScenePlan:
-    kind: str  # normal | few | crowded
+    kind: str  # clumped | normal | few | crowded
     parts: list[tuple[PartInfo, str]]  # (part, finish)
     gap_mm: float
     touch_probability: float
@@ -121,10 +121,13 @@ def plan_scene(sampler: BalancedSampler, cfg: Mapping[str, Any], rng: random.Ran
     u = rng.random()
     few_f = float(cfg.get("few_fraction", 0.1))
     crowded_f = float(cfg.get("crowded_fraction", 0.2))
+    clumped_f = float(cfg.get("clumped_fraction", 0.0))
     if u < few_f:
         kind, (lo, hi) = "few", _range(cfg, "few_objects", (1, 5))
     elif u < few_f + crowded_f:
         kind, (lo, hi) = "crowded", _range(cfg, "crowded_objects", (30, 50))
+    elif u < few_f + crowded_f + clumped_f:
+        kind, (lo, hi) = "clumped", _range(cfg, "clumped_objects", (30, 150))
     else:
         kind, (lo, hi) = "normal", _range(cfg, "objects", (15, 40))
     n = rng.randint(lo, hi)

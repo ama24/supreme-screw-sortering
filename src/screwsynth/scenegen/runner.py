@@ -23,9 +23,15 @@ from screwsynth.common.seed import derive_seed
 
 from . import camera as camera_mod
 from .composition import BalancedSampler, BalanceState, parts_from_assets, plan_scene
-from .groundtruth import discard_reason, object_meta, silhouette_area, transform_points
+from .groundtruth import (
+    discard_reason,
+    object_meta,
+    silhouette_area,
+    silhouette_mask,
+    transform_points,
+)
 from .materials import pick_insert_finish, sample_material
-from .placement import convex_hull_2d, place
+from .placement import ClumpSettings, convex_hull_2d, place, place_clumped, separation
 
 log = logging.getLogger("screwsynth.scenegen")
 
@@ -65,9 +71,11 @@ class Part:
         ]
         self.verts = np.vstack(self.pieces)
         self.hulls = []
+        self.heights = []  # top of the part in each rest pose (mm above the plate)
         for pose in self.rest["poses"]:
             v = transform_points(np.asarray(pose["transform"]), self.verts)
             self.hulls.append(convex_hull_2d(v[:, :2]))
+            self.heights.append(float(v[:, 2].max() - v[:, 2].min()))
 
     def mass_kg(self, finish: str) -> float:
         density = PLASTIC_DENSITY_KG_MM3 if finish.startswith("nylon") else STEEL_DENSITY_KG_MM3
@@ -105,6 +113,84 @@ def _yaw_matrix(yaw: float, xy: tuple[float, float], lift: float) -> np.ndarray:
     T[:2, :2] = [[c, -s], [s, c]]
     T[0, 3], T[1, 3], T[2, 3] = xy[0], xy[1], lift
     return T
+
+
+def _height_below(pl, placed, chosen, parts) -> float:
+    """Top of the highest layer-1 part under a layer-2 footprint (mm): where the drop starts."""
+    top = 0.0
+    for other in placed:
+        if other.layer != 1 or separation(pl.footprint, other.footprint) >= 0:
+            continue
+        info, _, pose_i = chosen[other.index]
+        top = max(top, parts[info.id].heights[pose_i])
+    return top
+
+
+def _px_per_mm(cam, area) -> float:
+    """Image scale at the centre of the working area (pixels per mm on the plate)."""
+    cx, cy = (area[0] + area[2]) / 2, (area[1] + area[3]) / 2
+    uv = cam.project(np.array([[cx, cy, 0.0], [cx + 1.0, cy, 0.0]]))
+    return float(np.linalg.norm(uv[1] - uv[0]))
+
+
+def _near(a, b, reach: float) -> bool:
+    """Footprints within `reach` mm of each other (bounding circles)."""
+    ca, cb = a.footprint.mean(axis=0), b.footprint.mean(axis=0)
+    ra = float(np.linalg.norm(a.footprint - ca, axis=1).max())
+    rb = float(np.linalg.norm(b.footprint - cb, axis=1).max())
+    return float(np.linalg.norm(ca - cb)) < ra + rb + reach
+
+
+def _lying_on(kept, parts, on_plate_mm: float) -> dict[int, list[int]]:
+    """id -> ids of the parts physically resting on it, from the settled poses: a part off the
+    plate whose footprint overlaps another one that reaches up to it lies on that one."""
+    geo = {}
+    for inst in kept:
+        v = transform_points(inst["T"], parts[inst["info"].id].verts)
+        geo[inst["id"]] = (convex_hull_2d(v[:, :2]), float(v[:, 2].min()), float(v[:, 2].max()))
+    out: dict[int, list[int]] = {i: [] for i in geo}
+    for b, (fb, zb, _) in geo.items():
+        if zb <= on_plate_mm:
+            continue
+        for a, (fa, _, za) in geo.items():
+            if a != b and za >= zb - 1.0 and separation(fa, fb) < -0.2:
+                out[a].append(b)
+    return out
+
+
+def _settle(instances, objs, parts, area, physics, discard_cfg, dropped, bs, s):
+    """Simulate the parts that can move (if any) and drop those that ended up off the plate.
+
+    Discarded parts are deleted from the scene at once, so they can neither be rendered nor collide
+    in a later settle (after a removal). Returns the parts that stay.
+    """
+    if any(inst["active"] for inst in instances):
+        bs.simulate(physics)
+    kept = []
+    for inst in instances:
+        if not inst["active"]:
+            kept.append(inst)
+            continue
+        T = bs.final_pose_mm(inst["obj"], s)
+        why = discard_reason(
+            T,
+            inst["T"],  # movement during this settle (after a removal, not since the start)
+            parts[inst["info"].id].verts,
+            area,
+            float(discard_cfg.get("max_lift_mm", 0.3)),
+            float(discard_cfg.get("max_move_mm", 30.0)),
+            float(discard_cfg.get("below_plate_mm", 1.0)),
+            allow_stacked=True,
+            max_stack_mm=float(discard_cfg.get("max_stack_mm", 15.0)),
+        )
+        if why:
+            dropped.append({"part_id": inst["info"].id, "reason": why})
+            objs.remove(inst["obj"])
+            bs.remove([inst["obj"]], [])
+        else:
+            inst["T"] = T
+            kept.append(inst)
+    return kept
 
 
 def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
@@ -208,15 +294,38 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
     variants = max(1, int(sg.get("variants_per_layout", 1)))
     measurable_tilt = float(cfg.get("restposes.measurable_tilt_deg", 15))
     window = int(sg.get("keypoint_window_px", 2))
+    clump_st = ClumpSettings.from_config(sg.get("clumped"))
+    lip = dict(sg.get("lip", {}) or {})
+    # parts may reach up to the lip around the plate, just outside the frame (cut by the border)
+    bounds = cam.visible_plate_rect(float(lip.get("outside_mm", 2.0)))
+    if lip.get("enabled", True):
+        static.add_lip(
+            bounds, float(lip.get("height_mm", 6.0)), float(lip.get("thickness_mm", 5.0))
+        )
+    on_plate_mm = float(sg.get("on_plate_mm", 0.3))
+    px_mm = _px_per_mm(cam, area)
+    occlusion_min_px = max(1, round(float(sg.get("occlusion_min_mm2", 0.5)) * px_mm**2))
+    removal_range = tuple(int(x) for x in sg.get("removal_steps", (0, 0)))
+    done_dir = out / "layouts_done"
+    done_dir.mkdir(exist_ok=True)
     stats = {"done": 0, "skipped": 0, "failed": 0, "seconds": []}
 
+    def scene_name(idx: int, r: int, v: int) -> str:
+        return f"{idx:06d}" + (f"_r{r}" if r else "") + (f"_{v}" if variants > 1 else "")
+
     for idx in range(args.start, args.start + args.scenes):
-        names = [f"{idx:06d}"] if variants == 1 else [f"{idx:06d}_{v}" for v in range(variants)]
-        if args.resume and all((scenes_dir / n / "meta.json").is_file() for n in names):
+        first = [scene_name(idx, 0, v) for v in range(variants)]
+        legacy_done = removal_range == (0, 0) and all(
+            (scenes_dir / n / "meta.json").is_file() for n in first
+        )
+        if args.resume and ((done_dir / f"{idx:06d}").is_file() or legacy_done):
             stats["skipped"] += 1
             continue
         t0 = time.perf_counter()
+        timing: dict[str, float] = {}
         rng = random.Random(derive_seed(args.seed, "scene", idx))
+        rrng = random.Random(derive_seed(args.seed, "removals", idx))
+        removals = rrng.randint(*removal_range) if removal_range[1] > 0 else 0
         objs, mats = [], []
         try:
             plan = plan_scene(sampler, sg, rng)
@@ -229,24 +338,36 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                 pose_i = parts[info.id].sample_pose(rng)
                 chosen.append((info, finish, pose_i))
             hulls = [parts[i.id].hulls[p] for i, _, p in chosen]
-            placed = place(
-                hulls,
-                area,
-                rng,
-                plan.gap_mm,
-                plan.touch_probability,
-                int(sg.get("max_place_tries", 60)),
-            )
+            tries = int(sg.get("max_place_tries", 60))
+            if plan.kind == "clumped":
+                heights = [parts[i.id].heights[p] for i, _, p in chosen]
+                placed = place_clumped(hulls, area, bounds, rng, clump_st, tries, heights)
+            else:
+                placed = place(hulls, area, rng, plan.gap_mm, plan.touch_probability, tries)
+            timing["place"] = time.perf_counter() - t0
             instances = []
+            # parts lying on the plate are already in an exact rest pose: fixed obstacles. Only
+            # parts dropped on top (and crowded scenes, where footprints overlap) move, and only
+            # parts within reach of a moving one need a collision body at all.
+            moving = [pl for pl in placed if pl.layer == 2 or plan.kind == "crowded"]
+            reach = float(physics.get("collision_reach_mm", 20.0))
             for pl in placed:
                 info, finish, pose_i = chosen[pl.index]
                 part = parts[info.id]
-                T0 = _yaw_matrix(pl.yaw, pl.xy, float(physics.get("drop_mm", 0.05))) @ np.asarray(
+                active = pl.layer == 2 or plan.kind == "crowded"
+                body = active or any(_near(pl, m, reach) for m in moving)
+                if pl.layer == 2:
+                    lift = _height_below(pl, placed, chosen, parts) + float(
+                        physics.get("stack_clearance_mm", 0.5)
+                    )
+                else:
+                    lift = float(physics.get("drop_mm", 0.05)) if active else 0.0
+                T0 = _yaw_matrix(pl.yaw, pl.xy, lift) @ np.asarray(
                     part.rest["poses"][pose_i]["transform"]
                 )
                 obj, children = library.instance(info.id, part.meta)
                 objs.append(obj)  # registered at once so a failure below still cleans it up
-                bs.place_instance(obj, children, T0, s, part.mass_kg(finish), physics)
+                bs.place_instance(obj, children, T0, s, part.mass_kg(finish), physics, active, body)
                 material = {
                     "body": sample_material(finish, sg.get("materials"), rng, sg.get("wear"))
                 }
@@ -269,106 +390,134 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                         "finish": finish,
                         "pose": pose_i,
                         "T0": T0,
+                        "T": T0,
                         "obj": obj,
                         "material": material,
+                        "active": active,
+                        "layer": pl.layer,
                     }
                 )
-            if instances:
-                bs.simulate(physics)
-            kept, dropped = [], []
-            for inst in instances:
-                T = bs.final_pose_mm(inst["obj"], s)
-                why = discard_reason(
-                    T,
-                    inst["T0"],
-                    parts[inst["info"].id].verts,
-                    area,
-                    float(discard_cfg.get("max_lift_mm", 0.3)),
-                    float(discard_cfg.get("max_move_mm", 15.0)),
-                    float(discard_cfg.get("below_plate_mm", 1.0)),
-                )
-                if why:
-                    dropped.append({"part_id": inst["info"].id, "reason": why})
-                    inst["obj"].hide(True)
-                    for c in inst["obj"].get_children():
-                        c.hide(True)
-                else:
-                    inst["T"] = T
-                    kept.append(inst)
+            timing["build"] = time.perf_counter() - t0 - timing["place"]
+            dropped: list[dict[str, Any]] = []
+            kept = _settle(instances, objs, parts, area, physics, discard_cfg, dropped, bs, s)
+            timing["physics"] = time.perf_counter() - t0 - timing["place"] - timing["build"]
             for k, inst in enumerate(kept, start=1):
                 inst["obj"].set_cp("category_id", k)
                 inst["id"] = k
-                rp = inst["obj"].get_rigidbody()
-                if rp is not None:
-                    inst["obj"].disable_rigidbody()
-            for v, name in enumerate(names):
-                light = static.jitter(random.Random(derive_seed(args.seed, "light", idx, v)))
-                rgb, seg, dep = bs.render(bool(render_cfg.get("depth", False)))
-                objects = []
+            counted = [inst["info"].class_name for inst in kept]
+            removed: list[int] = []
+            images = 0
+            for r in range(removals + 1):
+                if r > 0:  # the picker takes one free part, the rest settles, a new photo
+                    free = [inst for inst in kept if inst.get("free")]
+                    if not free:
+                        break
+                    victim = rrng.choice(free)
+                    removed.append(victim["id"])
+                    kept.remove(victim)
+                    objs.remove(victim["obj"])
+                    bs.remove([victim["obj"]], [])
+                    kept = _settle(kept, objs, parts, area, physics, discard_cfg, dropped, bs, s)
+                on_it = _lying_on(kept, parts, on_plate_mm)
+                shapes = {}
                 for inst in kept:
                     part = parts[inst["info"].id]
-                    pieces = [transform_points(inst["T"], p) for p in part.pieces]
-                    objects.append(
-                        object_meta(
-                            inst_id=inst["id"],
-                            part=part.meta,
-                            class_id=class_ids[part.meta["class_name"]],
-                            finish=inst["finish"],
-                            material=inst["material"]["body"],
-                            T_plate=inst["T"],
-                            rest_pose_index=inst["pose"],
-                            measurable_tilt_deg=measurable_tilt,
-                            cam=cam,
-                            instance=seg,
-                            alone_area=silhouette_area(cam, pieces),
-                            window=window,
-                        )
+                    pieces = [transform_points(inst["T"], q) for q in part.pieces]
+                    shapes[inst["id"]] = (
+                        silhouette_area(cam, pieces),
+                        silhouette_mask(cam, pieces),
+                        float(transform_points(inst["T"], part.verts)[:, 2].min()),
                     )
-                ids_in_mask = sorted(int(i) for i in np.unique(seg) if i)
-                missing_ids = sorted({o["instance_id"] for o in objects} - set(ids_in_mask))
-                d = scenes_dir / name
-                d.mkdir(parents=True, exist_ok=True)
-                write_png(d / "rgb.png", rgb)
-                write_png(d / "instance.png", seg)
-                if dep is not None:
-                    np.save(d / "depth.npy", dep)
-                write_json(
-                    d / "meta.json",
-                    {
-                        "scene_id": name,
-                        "layout_id": f"{idx:06d}",
-                        "variant": v,
-                        "seed": args.seed,
-                        "scene_kind": plan.kind,
-                        "units": "mm",
-                        "image": "rgb.png",
-                        "instance_mask": "instance.png",
-                        "camera": cam.to_json(),
-                        "world_scale": ws,
-                        "area_mm": list(area),
-                        "lighting": light,
-                        "objects": objects,
-                        "dropped": dropped,
-                        "fully_hidden_ids": missing_ids,
-                        "render": {
-                            "samples": render_cfg.get("samples"),
-                            "denoiser": render_cfg.get("denoiser"),
-                            "resolution": list(cam.resolution),
+                for v in range(variants):
+                    name = scene_name(idx, r, v)
+                    light = static.jitter(random.Random(derive_seed(args.seed, "light", idx, v)))
+                    rgb, seg, dep = bs.render(bool(render_cfg.get("depth", False)))
+                    objects = []
+                    for inst in kept:
+                        part = parts[inst["info"].id]
+                        area_px, sil, zmin = shapes[inst["id"]]
+                        objects.append(
+                            object_meta(
+                                inst_id=inst["id"],
+                                part=part.meta,
+                                class_id=class_ids[part.meta["class_name"]],
+                                finish=inst["finish"],
+                                material=inst["material"]["body"],
+                                T_plate=inst["T"],
+                                rest_pose_index=inst["pose"],
+                                measurable_tilt_deg=measurable_tilt,
+                                cam=cam,
+                                instance=seg,
+                                alone_area=area_px,
+                                window=window,
+                                silhouette=sil,
+                                occlusion_min_px=occlusion_min_px,
+                                on_plate_mm=on_plate_mm,
+                                lowest_z_mm=zmin,
+                                lying_on_it=on_it[inst["id"]],
+                            )
+                        )
+                    if v == 0:
+                        free_ids = {o["instance_id"] for o in objects if o["free"]}
+                        for inst in kept:
+                            inst["free"] = inst["id"] in free_ids
+                    ids_in_mask = sorted(int(i) for i in np.unique(seg) if i)
+                    missing_ids = sorted({o["instance_id"] for o in objects} - set(ids_in_mask))
+                    d = scenes_dir / name
+                    d.mkdir(parents=True, exist_ok=True)
+                    write_png(d / "rgb.png", rgb)
+                    write_png(d / "instance.png", seg)
+                    if dep is not None:
+                        np.save(d / "depth.npy", dep)
+                    write_json(
+                        d / "meta.json",
+                        {
+                            "scene_id": name,
+                            "layout_id": f"{idx:06d}",
+                            "variant": v,
+                            "removal_step": r,
+                            "removed_ids": list(removed),
+                            "seed": args.seed,
+                            "scene_kind": plan.kind,
+                            "units": "mm",
+                            "image": "rgb.png",
+                            "instance_mask": "instance.png",
+                            "camera": cam.to_json(),
+                            "world_scale": ws,
+                            "area_mm": list(area),
+                            "lighting": light,
+                            "objects": objects,
+                            "dropped": dropped,
+                            "fully_hidden_ids": missing_ids,
+                            "render": {
+                                "samples": render_cfg.get("samples"),
+                                "denoiser": render_cfg.get("denoiser"),
+                                "resolution": list(cam.resolution),
+                            },
                         },
-                    },
-                )
-            sampler.record([inst["info"].class_name for inst in kept])
+                    )
+                    images += 1
+            timing["render"] = time.perf_counter() - t0 - sum(timing.values())
+            sampler.record(counted)
             sampler.state.save(state_path)
+            (done_dir / f"{idx:06d}").write_text(str(images), encoding="utf-8")
             dt = time.perf_counter() - t0
             stats["done"] += 1
             stats["seconds"].append(dt)
             log.info(
-                "scene %s: %d objects (%d dropped), %s, %.1f s",
-                names[0],
-                len(kept),
+                "scene %06d: %d objects (%d dropped, %d simulated), %s, %d image(s), %.1f s "
+                "(place %.1f, build %.1f, physics %.1f, render+gt %.1f)",
+                idx,
+                len(counted),
                 len(dropped),
+                sum(1 for i in instances if i["active"]),
                 plan.kind,
+                images,
                 dt,
+                timing["place"],
+                timing["build"],
+                timing["physics"],
+                timing["render"],
             )
         except Exception as exc:  # one bad scene must not stop the run
             stats["failed"] += 1

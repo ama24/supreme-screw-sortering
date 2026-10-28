@@ -79,7 +79,9 @@ Runs are **resumable and deterministic**:
   rather than an open room. One rectangular area light panel acts as the diffuse LED panel.
 
 **Per scene:**
-1. **Composition.** The scene type is *normal*, *few* (1–5 objects) or *crowded* (parts touch).
+1. **Composition.** The scene type is *clumped* (the default majority, below), *normal* (evenly scattered),
+   *few* (1–5 objects) or *crowded* (parts touch), by `clumped_fraction`, `few_fraction` and
+   `crowded_fraction`.
    - Classes are drawn by **deficit sampling**: uniformly among classes whose instance count so far is within
      `balance_slack` of the minimum. Counts persist across chunks.
    - Then a length is chosen uniformly among the class's enabled parts, and a finish from the part's allowed
@@ -90,10 +92,16 @@ Runs are **resumable and deterministic**:
    - Overlaps are rejected with a separating-axis test on 2D convex footprints (the collision proxy in that rest
      pose).
    - Crowded scenes allow `crowded_gap_mm` of overlap and slide parts against neighbours (`touch_probability`).
-3. **Settle.** A short Bullet simulation using the compound convex collision pieces (not the render mesh), with
-   mass from volume × density.
-   - Parts that fell off, ended up stacked (lowest point > `max_lift_mm`), or moved more than `max_move_mm` are
-     discarded (hidden) and listed under `dropped`.
+   - **Clumped scenes** imitate a handful of parts thrown onto the plate and spread by hand
+     (`scenegen.clumped`). See *Clumped scenes* below.
+3. **Settle.** Parts lying on the plate are already in an exact rest pose, so they are *fixed* (passive)
+   obstacles. Only parts that can move are simulated by Bullet: parts dropped on top of others, and every part
+   of a crowded scene. They use the compound convex collision pieces (not the render mesh), with mass from
+   volume × density.
+   - Only fixed parts within `physics.collision_reach_mm` of a moving one get a collision body at all. Scenes
+     with nothing moving (normal, few) skip the simulation.
+   - Parts that fell off, rest higher than `discard.max_stack_mm` on other parts, or moved more than
+     `max_move_mm` during a settle are deleted and listed under `dropped`.
 4. **Materials per instance.** PBR presets with jittered colour, roughness, anisotropy (machined look), coat and
    subsurface (nylon), plus optional scratches, grime and fingerprint noise. Nyloc inserts get their own nylon
    material slot, coloured blue or white by the weights in `scenegen.insert_colours` (default 70 % blue). The
@@ -105,6 +113,25 @@ Runs are **resumable and deterministic**:
    - Outputs: RGB, plus instance segmentation via the `category_id` custom property (0 = background, k = object
      k). Depth is optional.
 7. **Ground truth.** See the schema below.
+8. **Removals.** If `removal_steps` > 0, a *free* part (nothing lies on it) is removed, the rest settles (a part
+   lying on the removed one falls), and the scene is rendered again. This repeats up to the drawn number of
+   steps, like the photo the machine takes after each part the picker removes.
+
+### Clumped scenes
+
+1. **Clumps.** 1–3 clump centres (`clumps`), each with a size (`spread_mm`). With `edge_probability`, a clump
+   sits against the lip at the frame edge.
+2. **Layer 1 (on the plate).** Each part aims at a point drawn around a clump centre. If that spot is taken, it
+   slides outward until it touches its neighbours, or nearly touches them (`contact_gap_mm`). A share of parts
+   (`loose_fraction`) lands anywhere instead.
+3. **Layer 2 (on top).** A share of parts (`overlap_probability`, drawn per scene) is placed over layer-1
+   parts and dropped onto them by the physics:
+   - their centre must lie over a part at most `max_support_mm` tall, so nothing balances on a standing screw;
+   - tops never overlap each other, so at most two layers form (some superposition, no piles).
+4. **Lip.** Invisible walls stand `lip.outside_mm` outside the visible area. Footprints may reach up to the lip
+   as long as their centre is inside the area, so parts pushed against it are cut by the image border, as in a
+   real photo.
+5. **Early stop.** Placement stops once `give_up_after` parts in a row do not fit (the plate is full).
 
 ## Output layout
 
@@ -120,14 +147,18 @@ output/<run>/
     meta.json
 ```
 
-With `variants_per_layout > 1`, the scene folders are `000000_0`, `000000_1`, …, and they share a `layout_id`.
-Tool 07 keeps layouts together when splitting.
+- **Lighting variants:** with `variants_per_layout > 1`, the scene folders are `000000_0`, `000000_1`, … and
+  share a `layout_id`.
+- **Removals:** the photos after removals are `000000_r1`, `000000_r2`, … (`000000_r1_0` with variants). They
+  share the layout's `layout_id`, so tool 07 keeps them in the same split.
+- **Resume:** `layouts_done/<layout>` marks a finished layout (all its photos), and `--resume` skips those.
 
 ### `meta.json` schema (lengths in mm in the plate frame; pixels in the undistorted render)
 
 | Key | Meaning |
 |---|---|
-| `scene_id`, `layout_id`, `variant`, `seed`, `scene_kind` | Identification (`scene_kind`: normal / few / crowded) |
+| `scene_id`, `layout_id`, `variant`, `seed`, `scene_kind` | Identification (`scene_kind`: clumped / normal / few / crowded) |
+| `removal_step`, `removed_ids` | Photo number after removals (0 = as placed), and the instance ids removed so far |
 | `camera` | `K` (render), `K_full`, `dist_coeffs`, `image_size_full`, `roi`, `resolution`, `resolution_scale`, `T_cam_plate`, `distorted: false` |
 | `world_scale`, `area_mm` | Blender scale and the placement rectangle |
 | `lighting` | Sampled light/plate parameters |
@@ -147,7 +178,10 @@ Per object:
 | `keypoints.{head_top,bearing,tip}` | `xyz` (plate mm), `uv` (render px, undistorted), `visibility` (COCO: 2 visible, 1 occluded, 0 not labelled/outside) |
 | `keypoints_labelled` | False for non-screws; all their visibilities are then 0 |
 | `axis_height_head_mm`, `axis_height_tip_mm`, `axis_height_head_top_mm` | Heights of the keypoints (on the screw axis) above the plate, for parallax correction |
-| `measurable` | Screw with \|axis tilt\| ≤ `restposes.measurable_tilt_deg` |
+| `support`, `lowest_z_mm` | `plate` when the lowest point is within `on_plate_mm` of the plate, else `parts` (it rests on other parts) |
+| `lying_on_it`, `free` | Ids of the parts physically resting on this one (from the 3D poses); `free` when there are none (the picker can take it) |
+| `occluded_by` | Parts covering at least `occlusion_min_mm2` of it in the image (also neighbours leaning over it in perspective) |
+| `measurable` | A screw lying on the plate, \|axis tilt\| ≤ `restposes.measurable_tilt_deg`, free, not truncated, all three keypoints visible |
 | `mask_area_px`, `alone_area_px`, `alone_area_in_image_px` | Visible pixels, the silhouette when alone, and the part of it inside the image |
 | `visible_pixel_fraction` | `mask_area_px / alone_area_px` |
 | `truncated` | Cut by the image border |
@@ -161,15 +195,19 @@ Per object:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `objects`, `few_objects`, `crowded_objects` | [15,40], [1,5], [30,50] | Objects per scene type |
-| `few_fraction`, `crowded_fraction` | 0.1, 0.2 | Fractions of scene types |
+| `clumped_objects`, `objects`, `few_objects`, `crowded_objects` | [30,150], [15,40], [1,5], [30,50] | Objects per scene type |
+| `clumped_fraction`, `few_fraction`, `crowded_fraction` | 0.6, 0.1, 0.1 | Fractions of scene types (the rest: normal) |
+| `clumped.*` | 1–3 clumps, spread 4–15 mm, loose 0.1, edge 0.3, on top 0.1–0.35, gap 0–1 mm, support ≤ 12 mm | Clumped scenes |
+| `lip.*` | on, 2 mm outside, 6 mm high | Walls around the plate, just outside the frame |
+| `removal_steps` | [0, 3] | Parts removed one by one per layout (a photo after each) |
+| `on_plate_mm`, `occlusion_min_mm2` | 0.3, 0.5 | Lying on the plate; minimum covered area that counts as occlusion |
 | `min_gap_mm`, `crowded_gap_mm`, `touch_probability` | 1.0, −0.3, 0.5 | Spacing and touching |
 | `area_margin_mm`, `max_place_tries` | 3, 60 | Placement |
 | `balance_slack`, `finish_weights` | 1, {} | Class balancing and finish weights |
 | `variants_per_layout`, `keypoint_window_px` | 1, 2 | Lighting variants and keypoint visibility window |
 | `nominal_camera.*` | 4.74 mm, 1.4 µm, 4608×2592, 300 mm | `--nominal-camera` |
-| `physics.*` | drop 0.05 mm, 0.4–1.5 s, 20 substeps/iters, friction 0.6, margin 0.05 mm | Settle |
-| `discard.*` | lift 0.3 mm, move 15 mm, below 1 mm | Post-settle rejection |
+| `physics.*` | drop 0.05 mm, top clearance 0.5 mm, reach 20 mm, 0.4–1.5 s, 20 substeps/iters, friction 0.6, margin 0.05 mm | Settle |
+| `discard.*` | move 30 mm, stack 15 mm, below 1 mm | Post-settle rejection |
 | `render.*` | OPTIX, 64 samples, threshold 0.02, OPTIX denoiser, scale 1.0, bounces 6/3/4/2, depth off | Cycles |
 | `preview.*` | 10 scenes, scale 0.25, 16 samples | `--preview` |
 | `plate.*` | thickness 1.75, grid 24, roughness, bump, line pitch, solid colours | Plate |
@@ -178,7 +216,14 @@ Per object:
 
 ## Performance (RTX 2070 Super, 8 GB)
 
-`log.txt` reports seconds per scene. The target is 20–40 s per full-resolution ROI scene (about 2560 × 2560).
+`log.txt` reports seconds per layout, split into place, build, physics and render + ground truth.
+
+Measured on the development PC: preview quality, 70–80 parts per clumped layout, 3 photos each (two removals),
+with another render running at the same time. Result: about 20 s per layout (build 7–15 s, physics 1–3 s, render
+3–4 s per photo). Before fixed parts and selective collision bodies, a 150-part scattered scene took 68–157 s,
+almost all of it physics.
+
+The target is 20–40 s per full-resolution ROI scene (about 2560 × 2560).
 Run `python tools/scenegen/batch.py --run bench --benchmark` to time these settings on your machine:
 - 16, 32, 64 and 128 samples with OptiX;
 - 64 samples without a denoiser;
