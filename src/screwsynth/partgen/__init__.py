@@ -1,1 +1,1 @@
-"""partgen tool. Status: TODO (see docs/prompts)."""
+"""Tool 02: parametric part generator (render mesh, collision proxy, keypoints, part.json)."""

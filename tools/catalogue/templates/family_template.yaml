@@ -5,7 +5,9 @@
 # This example shows the STEP route (source: step): the geometry comes from vendor CAD files
 # instead of parametric dimensions. Tool 02 (partgen) converts the STEP files to meshes.
 # For screws, "step" is keyed by length; each entry gives the file and the three keypoints
-# (head_top, bearing, tip) in the part's local frame in mm (axis +z, bearing face at z = 0).
+# (head_top, bearing, tip) measured in the STEP file's own coordinates (in its `units`, default mm).
+# partgen uses them to align the part: tip -> head_top becomes +z, bearing goes to the origin.
+# If cadquery is not installed, export the STEP to STL with the same name next to it.
 # For a parametric family instead, set "shape" (socket_cap, hex, button, countersunk, hex_nut,
 # nyloc_nut, washer, tnut_slide, tnut_drop) and give "dims" per size like the shipped families.
 families:

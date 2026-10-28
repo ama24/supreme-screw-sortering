@@ -31,7 +31,17 @@ catalogue:
 # 02 partgen — parametric meshes, collision proxies, keypoints
 partgen:
   lod: med                   # low | med | high (thread segments per turn, radial segments)
-  max_triangles: 200000      # budget for the largest part (M10x80)
+  max_triangles: 200000      # budget per part; thread resolution is reduced automatically above it
+  lod_levels:
+    # thread_segments: vertices per turn around the axis; axial_per_pitch: rings per thread pitch;
+    # round_segments: segments of heads, washers and other round parts
+    low: {thread_segments: 24, axial_per_pitch: 8, round_segments: 32}
+    med: {thread_segments: 40, axial_per_pitch: 12, round_segments: 64}
+    high: {thread_segments: 64, axial_per_pitch: 16, round_segments: 96}
+  collision_segments: 16     # sides of the cylindrical collision pieces (vertices on the true radius)
+  tolerance_mm: 0.01         # dimension check tolerance
+  preview_px: 360            # height of each preview view in pixels
+  workers: 0                 # processes for `build --all` (0 = min(4, CPU count))
 
 # 03 calibration — Pi Camera 3 intrinsics, extrinsics, sensor profile
 calibration:

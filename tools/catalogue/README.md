@@ -84,9 +84,9 @@ Expansion rules:
 
 ### STEP-based parts
 A family can set `source: step` instead of parametric dimensions. For screws, each size's `step` entry is keyed
-by length, and each entry needs a `path` and `keypoints` (`head_top`, `bearing`, `tip` as `[x, y, z]` mm in the
-part's local frame). Other kinds give a single `step: {path: ...}`. For now these fields are only stored and
-validated; tool 02 converts the files. See [templates/family_template.yaml](templates/family_template.yaml).
+by length, and each entry needs a `path` and `keypoints` (`head_top`, `bearing`, `tip` as `[x, y, z]`, measured in
+the STEP file's own coordinates; optional `units`, default mm). Tool 02 aligns the part from the keypoints. Other kinds give a single `step: {path: ...}`. For now these fields are only stored and
+validated here; tool 02 converts the files. See [templates/family_template.yaml](templates/family_template.yaml).
 
 ## CLI: `screwsynth-catalogue`
 
