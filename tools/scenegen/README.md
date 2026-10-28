@@ -100,7 +100,7 @@ Runs are **resumable and deterministic**:
    presets can be changed in the config (`scenegen.materials`).
 5. **Light and plate jitter.** Panel size, height, offset, power and colour temperature, a weak world fill, and
    plate roughness and bump. `variants_per_layout` re-renders the same arrangement under new lighting.
-6. **Render.** Cycles + OptiX with adaptive sampling, the OptiX denoiser and persistent data.
+6. **Render.** Cycles + OptiX with adaptive sampling, and the OptiX denoiser.
    - The view transform is *Standard* (no filmic curve).
    - Outputs: RGB, plus instance segmentation via the `category_id` custom property (0 = background, k = object
      k). Depth is optional.
@@ -194,7 +194,8 @@ Rough guide:
 - Samples and resolution drive the time almost linearly.
 - With OptiX, 32–64 samples are usually enough for diffuse light.
 - Glossy bounces matter for polished stainless and zinc.
-- Keep `use_persistent_data` on: the BVH and textures are reused between scenes.
+- Keep `use_persistent_data` **off**. With it on, Cycles keeps the colour-pass shaders and the instance masks come out empty.
+  Every scene is rebuilt anyway, so it would gain little.
 
 ## Tests
 

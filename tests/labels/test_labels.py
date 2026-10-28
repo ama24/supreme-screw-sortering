@@ -231,3 +231,13 @@ def test_ultralytics_loads_pose_dataset(tmp_path):
     item = ds[0]
     assert item["keypoints"].shape[1:] == (3, 3)
     assert ultra is not None and math.isfinite(float(item["bboxes"].sum()))
+
+
+def test_check_compares_washers_with_filled_area():
+    """A washer's polygon has no hole; the checker must compare it with the filled mask area."""
+    ring = np.zeros((200, 200), np.uint8)
+    cv2.circle(ring, (100, 100), 60, 1, -1)
+    cv2.circle(ring, (100, 100), 33, 0, -1)
+    disc = math.pi * 60**2
+    assert abs(insp._outer_area(ring > 0) - disc) / disc < 0.02
+    assert ring.sum() / disc < 0.75  # the raw mask would fail the 0.8-1.2 band

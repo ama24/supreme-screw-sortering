@@ -127,6 +127,14 @@ def preview(dataset: Path, n: int, out: Path, split: str = "val", seed: int = 0)
     return out
 
 
+def _outer_area(mask: np.ndarray) -> float:
+    """Area enclosed by the outer contours of a mask (holes filled), in pixels."""
+    contours, _ = cv2.findContours(
+        mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
+    return float(sum(cv2.contourArea(c) for c in contours))
+
+
 def check(dataset: Path) -> list[str]:
     """Every label parses, class ids exist, coordinates in [0, 1], polygon area ~ mask area."""
     exp = read_json(dataset / "export.json")
@@ -172,7 +180,8 @@ def check(dataset: Path) -> list[str]:
                 continue
             mask = cv2.imread(str(scene / "instance.png"), cv2.IMREAD_UNCHANGED)
             ids = [i for i in np.unique(mask) if i]
-            areas = sorted(int((mask == i).sum()) for i in ids)
+            # filled outer-contour area: YOLO polygons have no holes, so a washer is a full disc
+            areas = sorted(_outer_area(mask == i) for i in ids)
             polys = sorted(
                 g.polygon_area(parse_line(line, "seg")["poly"] * [w, h])
                 for line in lab.read_text(encoding="utf-8").splitlines()

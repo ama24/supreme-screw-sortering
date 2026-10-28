@@ -15,6 +15,7 @@ from typing import Any
 import blenderproc as bproc  # noqa: F401  (must be importable: we run inside blenderproc)
 import bpy
 import numpy as np
+from blenderproc.python.utility.BlenderUtility import get_all_blender_mesh_objects
 
 from .camera import RenderCamera
 
@@ -64,7 +65,9 @@ def init_renderer(cfg: Mapping[str, Any]) -> None:
         transparent_max_bounces=4,
     )
     scene = bpy.context.scene
-    scene.render.use_persistent_data = True
+    # must stay off: with persistent data Cycles keeps the shaders of the colour pass and
+    # BlenderProc's segmentation pass renders an empty (all-background) instance map
+    scene.render.use_persistent_data = False
     scene.view_settings.view_transform = (
         "Standard"  # no filmic tone curve: linear -> sRGB like a camera
     )
@@ -489,6 +492,11 @@ def remove(objs: Sequence[Any], material_names: Sequence[str]) -> None:
 
 
 def render(depth: bool = False) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+    # BlenderProc numbers the objects (pass_index) only once, in enable_segmentation_output; parts
+    # created later keep 0 and vanish into the background of the instance map. Renumber every mesh
+    # object (unique, non-zero) before each render; the decoder maps pass_index -> category_id.
+    for i, o in enumerate(get_all_blender_mesh_objects(), start=1):
+        o.pass_index = i
     data = bproc.renderer.render()
     rgb = np.asarray(data["colors"][0])[..., :3].astype(np.uint8)
     seg = np.asarray(data["category_id_segmaps"][0]).astype(np.uint16)
