@@ -26,6 +26,7 @@ screwsynth-catalogue = "screwsynth.catalogue.cli:main"
 screwsynth-partgen = "screwsynth.partgen.cli:main"
 screwsynth-restposes = "screwsynth.restposes.cli:main"
 screwsynth-calib = "screwsynth.calibration.cli:main"
+screwsynth-post = "screwsynth.postprocess.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/screwsynth"]

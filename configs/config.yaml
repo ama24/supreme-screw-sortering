@@ -159,8 +159,16 @@ scenegen:
   wear: {scratches: 0.3, grime: 0.2, fingerprints: 0.1}   # probability per instance
   materials: {}                # override/extend presets, e.g. zinc_clear: {roughness: [0.1, 0.3]}
 
-# 06 postprocess — camera and sensor simulation
-postprocess: {}
+# 06 postprocess — camera and sensor simulation (each step: enabled, probability, ranges)
+postprocess:
+  distortion: {enabled: true, rgb_interpolation: linear}     # linear | cubic | lanczos; mask always nearest
+  vignetting: {enabled: true, probability: 1.0, strength: [0.8, 1.2], fallback_k: 0.25}  # flat-field strength jitter
+  blur: {enabled: true, probability: 1.0, sigma_px: [0.3, 0.9]}  # Gaussian sigma at full ROI resolution
+  chromatic_aberration: {enabled: false, probability: 0.5, scale: [0.9995, 1.0005]}
+  colour: {enabled: true, probability: 1.0, gain: [0.9, 1.1], wb: [0.96, 1.04], gamma: [0.95, 1.05], match_plate: true}
+  noise: {enabled: true, probability: 1.0, scale: [0.8, 1.2], fixed_pattern: 0.0, fallback: {a: 0.5, b: 2.0}}
+  compression: {enabled: true, production_format: png, jpeg_probability: 0.2, quality: [80, 97]}
+  workers: 0                 # 0 = min(4, CPUs)
 
 # 07 labels — dataset export
 labels:
