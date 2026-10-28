@@ -79,7 +79,16 @@ DEFAULT_PRESETS: dict[str, dict[str, Any]] = {
         "metallic": 0.0,
         "roughness": [0.3, 0.55],
     },
-    "insert_nylon": {
+    # nyloc inserts: blue is the most common in practice, then white (natural nylon)
+    "insert_blue": {
+        "base_color": [0.08, 0.22, 0.62],
+        "hue_jitter": 0.02,
+        "value_jitter": 0.12,
+        "metallic": 0.0,
+        "roughness": [0.4, 0.6],
+        "subsurface": [0.05, 0.2],
+    },
+    "insert_white": {
         "base_color": [0.9, 0.88, 0.8],
         "value_jitter": 0.05,
         "metallic": 0.0,
@@ -89,6 +98,16 @@ DEFAULT_PRESETS: dict[str, dict[str, Any]] = {
 }
 
 DEFAULT_WEAR = {"scratches": 0.3, "grime": 0.2, "fingerprints": 0.1}
+DEFAULT_INSERT_COLOURS = {"insert_blue": 0.7, "insert_white": 0.3}
+
+
+def pick_insert_finish(weights: Mapping[str, float] | None, rng: random.Random) -> str:
+    """Weighted choice of the nyloc insert preset (scenegen.insert_colours)."""
+    table = {k: float(v) for k, v in (weights or DEFAULT_INSERT_COLOURS).items() if float(v) > 0}
+    if not table:
+        raise ValueError("scenegen.insert_colours needs at least one positive weight")
+    names = sorted(table)
+    return rng.choices(names, weights=[table[n] for n in names])[0]
 
 
 def _sample(v: Any, rng: random.Random) -> Any:

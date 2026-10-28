@@ -10,7 +10,7 @@ import trimesh
 from PIL import Image, ImageDraw
 
 BACKGROUND = (236, 238, 242)
-SLOT_COLOURS = {"body": np.array([150, 158, 170]), "insert": np.array([245, 245, 235])}
+SLOT_COLOURS = {"body": np.array([150, 158, 170]), "insert": np.array([40, 90, 200])}
 KP_COLOURS = {"head_top": (220, 40, 40), "bearing": (30, 150, 40), "tip": (40, 80, 220)}
 LIGHT = np.array([-0.4, 0.5, 0.77])
 

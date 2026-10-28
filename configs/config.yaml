@@ -158,6 +158,7 @@ scenegen:
     fill_world_strength: [0.0, 0.05]
   wear: {scratches: 0.3, grime: 0.2, fingerprints: 0.1}   # probability per instance
   materials: {}                # override/extend presets, e.g. zinc_clear: {roughness: [0.1, 0.3]}
+  insert_colours: {insert_blue: 0.7, insert_white: 0.3}   # nyloc insert preset -> weight
 
 # 06 postprocess — camera and sensor simulation (each step: enabled, probability, ranges)
 postprocess:

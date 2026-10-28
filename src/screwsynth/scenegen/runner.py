@@ -24,7 +24,7 @@ from screwsynth.common.seed import derive_seed
 from . import camera as camera_mod
 from .composition import BalancedSampler, BalanceState, parts_from_assets, plan_scene
 from .groundtruth import discard_reason, object_meta, silhouette_area, transform_points
-from .materials import sample_material
+from .materials import pick_insert_finish, sample_material
 from .placement import convex_hull_2d, place
 
 log = logging.getLogger("screwsynth.scenegen")
@@ -251,7 +251,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                 }
                 if "insert" in part.meta["mesh"]["material_slots"]:
                     material["insert"] = sample_material(
-                        "insert_nylon",
+                        pick_insert_finish(sg.get("insert_colours"), rng),
                         sg.get("materials"),
                         rng,
                         {"scratches": 0, "grime": 0, "fingerprints": 0},

@@ -96,7 +96,8 @@ Runs are **resumable and deterministic**:
      discarded (hidden) and listed under `dropped`.
 4. **Materials per instance.** PBR presets with jittered colour, roughness, anisotropy (machined look), coat and
    subsurface (nylon), plus optional scratches, grime and fingerprint noise. Nyloc inserts get their own nylon
-   material slot. The presets can be changed in the config (`scenegen.materials`).
+   material slot, coloured blue or white by the weights in `scenegen.insert_colours` (default 70 % blue). The
+   presets can be changed in the config (`scenegen.materials`).
 5. **Light and plate jitter.** Panel size, height, offset, power and colour temperature, a weak world fill, and
    plate roughness and bump. `variants_per_layout` re-renders the same arrangement under new lighting.
 6. **Render.** Cycles + OptiX with adaptive sampling, the OptiX denoiser and persistent data.

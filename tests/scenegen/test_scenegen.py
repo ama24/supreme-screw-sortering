@@ -20,7 +20,7 @@ from screwsynth.scenegen.groundtruth import (
     keypoint_visibility,
     silhouette_area,
 )
-from screwsynth.scenegen.materials import DEFAULT_PRESETS, sample_material
+from screwsynth.scenegen.materials import DEFAULT_PRESETS, pick_insert_finish, sample_material
 from screwsynth.scenegen.placement import convex_hull_2d, inside_area, place, separation
 
 # ----------------------------------------------------------------------------------- PNG
@@ -274,6 +274,20 @@ def test_materials_sampled_in_range():
     assert override["roughness"] == 0.5 and override["base_color"][0] > 0.9
     with pytest.raises(KeyError):
         sample_material("aluminium", None, rng)
+
+
+def test_insert_colour_weights():
+    rng = random.Random(0)
+    picks = Counter(pick_insert_finish(None, rng) for _ in range(2000))
+    assert set(picks) == {"insert_blue", "insert_white"}
+    assert 0.65 < picks["insert_blue"] / 2000 < 0.75
+    assert {pick_insert_finish({"insert_white": 1, "insert_blue": 0}, rng) for _ in range(50)} == {
+        "insert_white"
+    }
+    a = [pick_insert_finish(None, random.Random(5)) for _ in range(3)]
+    assert a == [pick_insert_finish(None, random.Random(5)) for _ in range(3)]
+    with pytest.raises(ValueError):
+        pick_insert_finish({"insert_blue": 0}, rng)
 
 
 # ------------------------------------------------------------------------- Blender smoke
