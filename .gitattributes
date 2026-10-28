@@ -1,0 +1,7 @@
+# Keep LF everywhere: the tools write LF, and Blender/Linux expect it.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ply binary
+*.step binary
+*.pdf binary
