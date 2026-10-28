@@ -118,6 +118,24 @@ from CAD files instead of parameters:
 
 Dimension checks are skipped for STEP parts. Mesh validity, keypoints and collision are still checked.
 
+## Unknown parts
+
+The junk shapes (catalogue `unknown:` section, class `UNKNOWN`) are built in
+`src/screwsynth/partgen/unknown.py`:
+- **wood screw:** countersunk or pan head with a cross recess, coarse thread and a pointed tip;
+- **threaded rod piece;**
+- **split lock washer:** cut and twisted;
+- **toothed lock washer;**
+- **pin:** chamfered;
+- **angle bracket:** with holes;
+- **hex standoff;**
+- **plate with holes;**
+- **blob:** two random convex lumps.
+
+Their parameters come from the catalogue, and details (head style, number of teeth, blob form) come from
+`dims.seed`. They have no keypoints (`labelled: false`) and are never measured. Collision proxies are
+convex pieces of the same shape. Rest poses use the symmetries in `restposes/compute.py`.
+
 ## Adding a builder for a new family
 
 1. In the catalogue, give the family a new `shape` and list its required dimensions in `REQUIRED_DIMS` (and

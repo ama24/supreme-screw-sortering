@@ -1,0 +1,103 @@
+{
+  "id": "UNKNOWN_PIN_03",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_pin",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "d": 5.31,
+    "length": 34.3,
+    "seed": 672828.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "zinc_yellow",
+    "black_oxide",
+    "stainless_a2",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        17.15
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -17.15
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 258,
+    "triangles": 512,
+    "watertight": true,
+    "volume_mm3": 752.1381829962829,
+    "area_mm2": 602.6790135561912,
+    "bbox_min": [
+      -2.6549999713897705,
+      -2.6549999713897705,
+      -17.149999618530273
+    ],
+    "bbox_max": [
+      2.6549999713897705,
+      2.6549999713897705,
+      17.149999618530273
+    ],
+    "center_of_mass": [
+      1.007676871898931e-16,
+      1.007676871898931e-16,
+      -1.417045601107872e-17
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        512
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 60
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "c3893ef08c090db8"
+}

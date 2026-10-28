@@ -1,0 +1,103 @@
+{
+  "id": "UNKNOWN_WOODSCREW_03",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_wood_screw",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "d": 4.0,
+    "length": 39.96,
+    "seed": 604793.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "zinc_yellow",
+    "black_oxide",
+    "stainless_a2",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.0
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -39.959999
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -18.98
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 10931,
+    "triangles": 21858,
+    "watertight": true,
+    "volume_mm3": 419.0854402671586,
+    "area_mm2": 620.925611870364,
+    "bbox_min": [
+      -4.0,
+      -4.0,
+      -39.959999084472656
+    ],
+    "bbox_max": [
+      4.0,
+      4.0,
+      2.0
+    ],
+    "center_of_mass": [
+      0.0005753491997189709,
+      0.0003352540692706791,
+      -15.193982183419942
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        21858
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 122
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "58d1c9c0c8c4c68f"
+}

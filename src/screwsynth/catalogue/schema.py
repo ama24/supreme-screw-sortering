@@ -16,9 +16,17 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any
 
-from screwsynth.common.naming import format_size, plain_id, screw_id, size_value, tnut_id
+from screwsynth.common.naming import (
+    UNKNOWN,
+    format_size,
+    plain_id,
+    screw_id,
+    size_value,
+    tnut_id,
+    unknown_id,
+)
 
-KINDS = ("screw", "nut", "washer", "tnut")
+KINDS = ("screw", "nut", "washer", "tnut", "unknown")
 NOMINAL_LENGTH_MODES = ("bearing_to_tip", "head_top_to_tip")
 SOURCES = ("parametric", "step")
 MATERIALS = ("metal", "plastic")
@@ -47,6 +55,21 @@ SHAPE_KIND = {
     "tnut_slide": "tnut",
     "tnut_drop": "tnut",
 }
+
+# Non-catalogue parts the machine must reject (class UNKNOWN): type -> default parameter ranges
+# (mm). Each variant draws its parameters from these ranges, seeded by its part id.
+UNKNOWN_TYPES: dict[str, dict[str, tuple[float, float]]] = {
+    "wood_screw": {"d": (3.0, 5.0), "length": (12.0, 50.0)},
+    "threaded_rod": {"d": (3.0, 8.0), "length": (10.0, 70.0)},
+    "split_washer": {"d": (3.0, 10.0)},
+    "tooth_washer": {"d": (3.0, 10.0)},
+    "pin": {"d": (2.0, 8.0), "length": (6.0, 40.0)},
+    "bracket": {"size": (12.0, 40.0)},
+    "standoff": {"d": (3.0, 6.0), "length": (8.0, 30.0)},
+    "plate": {"size": (15.0, 50.0)},
+    "blob": {"size": (5.0, 25.0)},
+}
+_UNKNOWN_KEYS = {"enabled", "variants", "finishes", "types", "notes"}
 
 _FAMILY_KEYS = {
     "title",
@@ -198,6 +221,18 @@ class Rule:
         )
 
 
+@dataclass(frozen=True)
+class UnknownSpec:
+    """The `unknown:` section: junk types, their parameter ranges and finishes."""
+
+    enabled: bool
+    variants: int  # random variants per type
+    finishes: tuple[str, ...]
+    types: dict[str, dict[str, tuple[float, float]]]  # type -> parameter -> (lo, hi)
+    type_finishes: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    type_enabled: dict[str, bool] = field(default_factory=dict)
+
+
 @dataclass
 class Catalogue:
     version: int
@@ -205,6 +240,7 @@ class Catalogue:
     families: dict[str, Family]
     rules: list[Rule] = field(default_factory=list)
     max_length_mm: float | None = None
+    unknown: UnknownSpec | None = None
     _parts: list[Part] | None = field(default=None, init=False, repr=False)
 
     @property
@@ -238,7 +274,7 @@ class Catalogue:
 
 
 def class_sort_key(part: Part) -> tuple[str, int, float]:
-    return (part.family, part.slot or 0, size_value(part.size))
+    return (part.family, part.slot or 0, size_value(part.size) if part.size != "-" else 0.0)
 
 
 def _hash(obj: Any) -> str:
@@ -383,7 +419,7 @@ def parse_family(name: str, raw: Any) -> Family:
 def parse_catalogue(data: Any, max_length_mm: float | None = None) -> Catalogue:
     """Build a Catalogue from the loaded YAML mapping (PyYAML or ruamel round-trip data)."""
     _expect(data, Mapping, "catalogue")
-    _check_keys(data, {"version", "finishes", "families", "rules"}, "catalogue")
+    _check_keys(data, {"version", "finishes", "families", "rules", "unknown"}, "catalogue")
     finishes: dict[str, Finish] = {}
     for fid, raw in _expect(data.get("finishes", {}), Mapping, "finishes").items():
         _expect(raw, Mapping, f"finishes.{fid}")
@@ -397,12 +433,66 @@ def parse_catalogue(data: Any, max_length_mm: float | None = None) -> Catalogue:
         for name, raw in _expect(data.get("families", {}) or {}, Mapping, "families").items()
     }
     rules = parse_rules(data.get("rules", []), "rules")
+    unknown = parse_unknown(data.get("unknown"), set(finishes))
     return Catalogue(
         version=int(data.get("version", 1)),
         finishes=finishes,
         families=families,
         rules=rules,
         max_length_mm=max_length_mm,
+        unknown=unknown,
+    )
+
+
+def parse_unknown(raw: Any, finishes: set[str]) -> UnknownSpec | None:
+    """The optional `unknown:` section (see UNKNOWN_TYPES for the types and their ranges)."""
+    if raw is None:
+        return None
+    _expect(raw, Mapping, "unknown")
+    _check_keys(raw, _UNKNOWN_KEYS, "unknown")
+    variants = int(raw.get("variants", 6))
+    if variants < 1:
+        raise CatalogueError("unknown.variants must be >= 1")
+    fin = tuple(
+        str(f) for f in _expect(raw.get("finishes", []) or [], Sequence, "unknown.finishes")
+    )
+    types: dict[str, dict[str, tuple[float, float]]] = {}
+    type_fin: dict[str, tuple[str, ...]] = {}
+    type_on: dict[str, bool] = {}
+    for name, spec in _expect(raw.get("types", {}) or {}, Mapping, "unknown.types").items():
+        name = str(name)
+        where = f"unknown.types.{name}"
+        if name not in UNKNOWN_TYPES:
+            raise CatalogueError(f"{where}: unknown type; choose from {sorted(UNKNOWN_TYPES)}")
+        spec = dict(_expect(spec or {}, Mapping, where))
+        ranges = dict(UNKNOWN_TYPES[name])
+        for key, value in spec.items():
+            if key == "finishes":
+                type_fin[name] = tuple(
+                    str(f) for f in _expect(value, Sequence, f"{where}.finishes")
+                )
+            elif key == "enabled":
+                type_on[name] = bool(value)
+            elif key in ranges:
+                lo, hi = _num_list(value, f"{where}.{key}")
+                if not 0 < lo <= hi:
+                    raise CatalogueError(f"{where}.{key}: need 0 < low <= high, got {value}")
+                ranges[key] = (lo, hi)
+            else:
+                raise CatalogueError(f"{where}: unknown key {key!r}; allowed {sorted(ranges)}")
+        types[name] = ranges
+    for f in (*fin, *(f for fs in type_fin.values() for f in fs)):
+        if f not in finishes:
+            raise CatalogueError(f"unknown: finish {f!r} is not defined under finishes")
+    if not fin and any(n not in type_fin for n in types):
+        raise CatalogueError("unknown.finishes: list the finishes the unknown parts can have")
+    return UnknownSpec(
+        enabled=bool(raw.get("enabled", True)),
+        variants=variants,
+        finishes=fin,
+        types=types,
+        type_finishes=type_fin,
+        type_enabled=type_on,
     )
 
 
@@ -495,7 +585,49 @@ def expand(cat: Catalogue) -> list[Part]:
                     if rule.matches(part):
                         part = _replace_enabled(part, rule.enabled)
                 parts.append(part)
+    for part in _unknown_parts(cat.unknown):
+        for rule in cat.rules:
+            if rule.matches(part):
+                part = _replace_enabled(part, rule.enabled)
+        parts.append(part)
     return parts
+
+
+def _unknown_parts(spec: UnknownSpec | None) -> list[Part]:
+    """Variants of every unknown type, their parameters drawn from the type's ranges with a
+    generator seeded by the part id (the same id always gives the same part)."""
+    import random
+
+    if spec is None:
+        return []
+    out = []
+    for name, ranges in spec.types.items():
+        for n in range(1, spec.variants + 1):
+            pid = unknown_id(name, n)
+            rng = random.Random(int(hashlib.sha256(pid.encode()).hexdigest()[:12], 16))
+            dims = {k: round(rng.uniform(lo, hi), 2) for k, (lo, hi) in ranges.items()}
+            dims["seed"] = float(rng.randrange(1_000_000))  # shape details (head style, blob form)
+            out.append(
+                Part(
+                    id=pid,
+                    class_name=UNKNOWN,
+                    family=UNKNOWN,
+                    kind="unknown",
+                    standard="-",
+                    shape=f"unknown_{name}",
+                    size="-",
+                    length=None,
+                    pitch=None,
+                    enabled=spec.enabled and spec.type_enabled.get(name, True),
+                    common=True,
+                    finishes=spec.type_finishes.get(name, spec.finishes),
+                    dims=dims,
+                    dims_source="random",
+                    verified=False,  # no standard to check against
+                    size_key=name,
+                )
+            )
+    return out
 
 
 def _step_for(spec: SizeSpec, length: float | None) -> dict[str, Any] | None:

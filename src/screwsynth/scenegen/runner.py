@@ -253,6 +253,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
         BalanceState.load(state_path),
         int(sg.get("balance_slack", 1)),
         sg.get("finish_weights"),
+        float(sg.get("unknown_fraction", 0.0)),
     )
 
     run_cfg = {

@@ -1,0 +1,102 @@
+{
+  "id": "UNKNOWN_PLATE_02",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_plate",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "size": 22.92,
+    "seed": 890097.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "zinc_yellow",
+    "black_oxide",
+    "stainless_a2",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.720963
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -0.720963
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 400,
+    "triangles": 808,
+    "watertight": true,
+    "volume_mm3": 189.4201393123428,
+    "area_mm2": 374.9513528804509,
+    "bbox_min": [
+      -11.460000038146973,
+      -3.17315411567688,
+      -0.7209630608558655
+    ],
+    "bbox_max": [
+      11.460000038146973,
+      3.17315411567688,
+      0.7209630608558655
+    ],
+    "center_of_mass": [
+      4.0012231763154123e-16,
+      6.564506773642474e-17,
+      -7.814889016241041e-18
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        808
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 12
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "5e1ebca67975afe3"
+}

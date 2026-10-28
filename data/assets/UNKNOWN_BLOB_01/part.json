@@ -1,0 +1,100 @@
+{
+  "id": "UNKNOWN_BLOB_01",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_blob",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "size": 13.15,
+    "seed": 317098.0
+  },
+  "finishes": [
+    "nylon_white",
+    "nylon_black",
+    "black_oxide",
+    "zinc_clear"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        3.4475
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -3.4475
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 53,
+    "triangles": 102,
+    "watertight": true,
+    "volume_mm3": 138.84950041732816,
+    "area_mm2": 170.75001997647703,
+    "bbox_min": [
+      -5.270961761474609,
+      -3.910269260406494,
+      -3.4474997520446777
+    ],
+    "bbox_max": [
+      5.270961761474609,
+      3.910269260406494,
+      3.4474997520446777
+    ],
+    "center_of_mass": [
+      -0.5764377909724371,
+      0.3681693842319656,
+      -0.3741436502604414
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        102
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 54
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "a1797b536a6a8400"
+}

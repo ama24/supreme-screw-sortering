@@ -504,6 +504,12 @@ def build(part: Part, lod: Lod, coll_n: int = 16, max_triangles: int = 200_000) 
         from .step import build_step
 
         return build_step(part, coll_n)
+    if part.shape.startswith("unknown_"):
+        from .unknown import UNKNOWN_BUILDERS  # imports this module, so only here
+
+        if part.shape not in UNKNOWN_BUILDERS:
+            raise BuildError(f"no builder for shape {part.shape!r}")
+        return UNKNOWN_BUILDERS[part.shape](part, lod, coll_n)
     if part.shape not in BUILDERS:
         raise BuildError(f"no builder for shape {part.shape!r}")
     if part.kind == "screw":

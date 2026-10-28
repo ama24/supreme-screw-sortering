@@ -4,7 +4,8 @@ Part ids (see CLAUDE.md):
   screws        <FAMILY>_<SIZE>x<LENGTH>        DIN912_M4x16
   nuts/washers  <FAMILY>_<SIZE>                 DIN934_M4, DIN125A_M4
   T-nuts        TNUT_<SLIDE|DROP>_S<slot>_<SIZE> TNUT_DROP_S6_M4
-Class name = part id without the length.
+  unknown       UNKNOWN_<TYPE>_<NN>             UNKNOWN_WOODSCREW_03
+Class name = part id without the length; every unknown part has the class UNKNOWN.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from dataclasses import dataclass
 KEYPOINTS: tuple[str, str, str] = ("head_top", "bearing", "tip")
 TNUT_FAMILY = "TNUT"
 TNUT_KINDS: tuple[str, str] = ("SLIDE", "DROP")
+UNKNOWN = "UNKNOWN"  # family and class of the non-catalogue parts the machine rejects
 
 _NUM = r"\d+(?:\.\d+)?"
 _SIZE = rf"M{_NUM}"
@@ -24,6 +26,7 @@ _TNUT_RE = re.compile(
     rf"^{TNUT_FAMILY}_(?P<kind>{'|'.join(TNUT_KINDS)})_S(?P<slot>\d+)_(?P<size>{_SIZE})$"
 )
 _PLAIN_RE = re.compile(rf"^(?P<family>{_FAMILY})_(?P<size>{_SIZE})$")
+_UNKNOWN_RE = re.compile(rf"^{UNKNOWN}_(?P<variant>[A-Z][A-Z0-9]*_\d+)$")
 
 
 @dataclass(frozen=True)
@@ -35,6 +38,7 @@ class PartName:
     length: float | None = None
     tnut_kind: str | None = None
     slot: int | None = None
+    variant: str | None = None  # unknown parts: <TYPE>_<NN>
 
     @property
     def is_screw(self) -> bool:
@@ -45,7 +49,13 @@ class PartName:
         return self.tnut_kind is not None
 
     @property
+    def is_unknown(self) -> bool:
+        return self.variant is not None
+
+    @property
     def part_id(self) -> str:
+        if self.variant is not None:
+            return f"{UNKNOWN}_{self.variant}"
         if self.tnut_kind is not None:
             assert self.slot is not None
             return tnut_id(self.tnut_kind, self.slot, self.size)
@@ -55,6 +65,8 @@ class PartName:
 
     @property
     def class_name(self) -> str:
+        if self.variant is not None:
+            return UNKNOWN
         if self.tnut_kind is not None:
             return self.part_id
         return plain_id(self.family, self.size)
@@ -112,8 +124,18 @@ def tnut_id(kind: str, slot: int, size: str | float) -> str:
     return f"{TNUT_FAMILY}_{kind}_S{int(slot)}_{format_size(size)}"
 
 
+def unknown_id(kind: str, n: int) -> str:
+    """Id of an unknown (non-catalogue) part: unknown_id('wood_screw', 3) -> UNKNOWN_WOODSCREW_03."""
+    t = re.sub(r"[^A-Z0-9]", "", kind.upper())
+    if not t or not t[0].isalpha():
+        raise ValueError(f"invalid unknown part type {kind!r}")
+    return f"{UNKNOWN}_{t}_{int(n):02d}"
+
+
 def parse_part_id(part_id: str) -> PartName:
     """Parse a part id into its components; ValueError if it breaks the naming convention."""
+    if m := _UNKNOWN_RE.match(part_id):
+        return PartName(family=UNKNOWN, size="-", variant=m["variant"])
     if m := _TNUT_RE.match(part_id):
         return PartName(
             family=TNUT_FAMILY,

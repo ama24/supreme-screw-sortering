@@ -233,9 +233,12 @@ def test_cli_build_check_clean(tmp_path, capsys):
 
 def test_contact_sheet_parts(catalogue):
     chosen = contact_sheet_parts(catalogue)
-    assert len(chosen) == len(catalogue.families)
-    assert {p.family for p in chosen} == set(catalogue.families)
-    assert all(p.size == "M4" for p in chosen)
+    real = [p for p in chosen if p.kind != "unknown"]
+    assert len(real) == len(catalogue.families)
+    assert {p.family for p in real} == set(catalogue.families)
+    assert all(p.size == "M4" for p in real)
+    junk = [p for p in chosen if p.kind == "unknown"]  # one of each unknown type
+    assert len(junk) == len({p.shape for p in catalogue.parts if p.kind == "unknown"})
 
 
 # ---------------------------------------------------------------------------------------- STEP

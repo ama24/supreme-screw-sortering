@@ -1,0 +1,102 @@
+{
+  "id": "UNKNOWN_TOOTHWASHER_01",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_tooth_washer",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "d": 3.02,
+    "seed": 469827.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "zinc_yellow",
+    "black_oxide",
+    "stainless_a2",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.23
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -0.23
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 192,
+    "triangles": 384,
+    "watertight": true,
+    "volume_mm3": 15.119240407870365,
+    "area_mm2": 83.71922712875077,
+    "bbox_min": [
+      -3.960094690322876,
+      -3.960094690322876,
+      -0.23000000417232513
+    ],
+    "bbox_max": [
+      3.960094690322876,
+      3.960094690322876,
+      0.23000000417232513
+    ],
+    "center_of_mass": [
+      1.5665309380450644e-16,
+      0.0,
+      -6.119261476738533e-19
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        384
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 60
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "0f3d69290b9928aa"
+}

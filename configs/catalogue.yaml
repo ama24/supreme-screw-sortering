@@ -398,6 +398,27 @@ families:
       S8_M5: {pitch: 0.8, dims: {length: 16.0, width: 8.0, height: 6.5, neck_width: 7.8, neck_height: 2.0}}
       S8_M6: {pitch: 1.0, dims: {length: 16.0, width: 8.0, height: 6.5, neck_width: 7.8, neck_height: 2.0}}
 
+# ---------------------------------------------------------------- unknown (rejected) parts
+# Things that are not in the catalogue but end up on the plate anyway (wood screws, threaded rod,
+# lock washers, pins, brackets, spacers, plates, plastic bits). They all get the single class
+# UNKNOWN, so the machine can reject them instead of forcing a wrong class. Each type gets
+# `variants` random shapes, drawn from the ranges below (mm) and seeded by the part id
+# (UNKNOWN_WOODSCREW_01 ...). Disable all with `enabled: false` or a rule {match: UNKNOWN}.
+unknown:
+  enabled: true
+  variants: 6
+  finishes: [zinc_clear, zinc_yellow, black_oxide, stainless_a2, plain_steel, brass]
+  types:
+    wood_screw: {d: [3, 5], length: [12, 50]}        # pointed self-tapping / wood screws
+    threaded_rod: {d: [3, 8], length: [10, 70]}      # cut pieces of threaded rod
+    split_washer: {d: [3, 10]}                       # spring lock washers (DIN 127 look)
+    tooth_washer: {d: [3, 10]}                       # toothed lock washers
+    pin: {d: [2, 8], length: [6, 40]}                # dowel / cylindrical pins
+    bracket: {size: [12, 40]}                        # bent sheet-metal angle brackets
+    standoff: {d: [3, 6], length: [8, 30]}           # hex spacers / coupling nuts
+    plate: {size: [15, 50]}                          # flat plates with holes
+    blob: {size: [5, 25], finishes: [nylon_white, nylon_black, black_oxide, zinc_clear]}  # odd bits
+
 # Ordered overrides; the last matching rule wins. Patterns match part id, class name, family or
 # size (shell-style globs allowed). Managed by `screwsynth-catalogue enable|disable`.
 rules: []

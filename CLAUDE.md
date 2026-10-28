@@ -28,6 +28,9 @@ the tool you are working on before changing it.
 - Screws: DIN 912 (socket head cap), DIN 933 (hex head, fully threaded), ISO 7380 (button head),
   DIN 7991 (countersunk socket). Sizes M2, M2.5, M3, M4, M5, M6, M8, M10.
 - Nuts, washers, slide-in T-nuts and drop-in T-nuts (for aluminium extrusion slots).
+- UNKNOWN: one class for everything else that ends up on the plate (wood screws, threaded rod,
+  lock washers, pins, brackets, spacers, plates, odd bits), so the machine can reject it. Generated
+  from the catalogue's `unknown:` section; a share `scenegen.unknown_fraction` of each scene.
 - Finishes: black oxide, zinc plated (clear/yellow), stainless A2/A4, plain steel, brass, nylon.
   NO aluminium and no anodised colours. Finish is a visual variation only, never a class.
   Magnetic vs non-magnetic is NOT distinguished.
@@ -80,7 +83,8 @@ Every tool reads the catalogue through `catalogue_from_config()`, so `catalogue.
   accordingly. RGB as 8-bit PNG. Instance masks as 16-bit PNG, 0 = background, k = instance id
   listed in meta.json.
 - Part id: `<FAMILY>_<SIZE>x<LENGTH>` for screws (DIN912_M4x16), `<FAMILY>_<SIZE>` for nuts/washers
-  (DIN934_M4, DIN125A_M4), `TNUT_<SLIDE|DROP>_S<slot>_<SIZE>` for T-nuts (TNUT_DROP_S6_M4).
+  (DIN934_M4, DIN125A_M4), `TNUT_<SLIDE|DROP>_S<slot>_<SIZE>` for T-nuts (TNUT_DROP_S6_M4),
+  `UNKNOWN_<TYPE>_<NN>` for unknown parts (UNKNOWN_WOODSCREW_03, class UNKNOWN).
   Use `screwsynth.common.naming`.
 - Class name: part id without the length (DIN912_M4). Class ids are assigned in a deterministic,
   sorted order and stored in a generated classes.yaml.

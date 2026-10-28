@@ -109,13 +109,16 @@ def cmd_stats(ctx: _Ctx, args: argparse.Namespace) -> int:
     classes = cat.classes()
 
     fam_rows = []
-    for name, fam in cat.families.items():
+    kinds = {name: fam.kind for name, fam in cat.families.items()}
+    if any(p.kind == "unknown" for p in parts):
+        kinds["UNKNOWN"] = "unknown"
+    for name, kind in kinds.items():
         fp = [p for p in parts if p.family == name]
         fe = [p for p in fp if p.enabled]
         fam_rows.append(
             (
                 name,
-                fam.kind,
+                kind,
                 len(fp),
                 len(fe),
                 sum(p.common for p in fe),

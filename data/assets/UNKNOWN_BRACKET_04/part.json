@@ -1,0 +1,102 @@
+{
+  "id": "UNKNOWN_BRACKET_04",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_bracket",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "size": 20.86,
+    "seed": 17631.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "zinc_yellow",
+    "black_oxide",
+    "stainless_a2",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        9.766424
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -9.766424
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 272,
+    "triangles": 548,
+    "watertight": true,
+    "volume_mm3": 617.7473655582178,
+    "area_mm2": 874.4660919857221,
+    "bbox_min": [
+      -10.430000305175781,
+      -4.475184440612793,
+      -9.766424179077148
+    ],
+    "bbox_max": [
+      10.430000305175781,
+      4.475184440612793,
+      9.766424179077148
+    ],
+    "center_of_mass": [
+      -4.3824446370695584,
+      1.840345164707982e-16,
+      -4.39024334672365
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        548
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 24
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "10ede13fb1ef4552"
+}
