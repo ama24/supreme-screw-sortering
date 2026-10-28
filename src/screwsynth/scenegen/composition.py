@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from screwsynth.common.naming import UNKNOWN
+
 
 @dataclass(frozen=True)
 class PartInfo:
@@ -57,6 +59,9 @@ class ScenePlan:
 class BalancedSampler:
     """Favour under-represented classes: draw uniformly among the classes whose instance count is
     within `slack` of the current minimum (deficit sampling; keeps the spread across classes <= slack + 1).
+
+    Unknown parts (class UNKNOWN) are not balanced against the real classes: each draw is an unknown
+    part with probability `unknown_fraction` (uniform over the unknown parts).
     """
 
     def __init__(
@@ -65,12 +70,16 @@ class BalancedSampler:
         state: BalanceState | None = None,
         slack: int = 1,
         finish_weights: Mapping[str, float] | None = None,
+        unknown_fraction: float = 0.0,
     ) -> None:
         self.by_class: dict[str, list[PartInfo]] = {}
+        self.unknown = [p for p in parts if p.class_name == UNKNOWN]
         for p in parts:
-            self.by_class.setdefault(p.class_name, []).append(p)
-        if not self.by_class:
+            if p.class_name != UNKNOWN:
+                self.by_class.setdefault(p.class_name, []).append(p)
+        if not self.by_class and not self.unknown:
             raise ValueError("no parts to sample from")
+        self.unknown_fraction = float(unknown_fraction) if self.unknown else 0.0
         self.classes = sorted(self.by_class)
         self.state = state or BalanceState()
         for c in self.classes:
@@ -79,6 +88,8 @@ class BalancedSampler:
         self.finish_weights = dict(finish_weights or {})
 
     def candidates(self) -> list[str]:
+        if not self.classes:
+            return []
         lo = min(self.state.counts[c] for c in self.classes)
         return [c for c in self.classes if self.state.counts[c] <= lo + self.slack]
 
@@ -96,6 +107,11 @@ class BalancedSampler:
         return rng.choices(part.finishes, weights=w, k=1)[0]
 
     def draw(self, rng: random.Random) -> tuple[PartInfo, str]:
+        if self.unknown and (
+            not self.classes or (self.unknown_fraction > 0 and rng.random() < self.unknown_fraction)
+        ):
+            part = rng.choice(self.unknown)
+            return part, self.sample_finish(part, rng)
         c = self.sample_class(rng)
         part = self.sample_part(c, rng)
         return part, self.sample_finish(part, rng)

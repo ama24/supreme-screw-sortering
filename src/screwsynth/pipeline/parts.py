@@ -45,8 +45,12 @@ def overview(cfg: dict[str, Any]) -> Overview:
     base: dict[str, bool] = defaultdict(bool)
     order = {c: i for i, c in enumerate(cat.classes(enabled_only=False))}
     for p in cat.parts:
-        fam = cat.families[p.family]
-        fv = fams.setdefault(p.family, FamilyView(p.family, fam.title, fam.kind, [], {}))
+        if p.family in cat.families:
+            fam = cat.families[p.family]
+            title, kind = fam.title, fam.kind
+        else:  # the unknown parts (catalogue `unknown:` section, class UNKNOWN)
+            title, kind = "Unknown parts: junk the machine rejects", p.kind
+        fv = fams.setdefault(p.family, FamilyView(p.family, title, kind, [], {}))
         if p.class_name not in fv.parts:
             fv.classes.append(p.class_name)
             fv.parts[p.class_name] = 0
@@ -57,7 +61,8 @@ def overview(cfg: dict[str, Any]) -> Overview:
         base[p.class_name] |= p.enabled
     for fv in fams.values():
         fv.classes.sort(key=lambda c: order.get(c, 0))
-    families = [fams[name] for name in cat.families if name in fams]  # catalogue.yaml order
+    order_names = [*cat.families, *(n for n in fams if n not in cat.families)]
+    families = [fams[name] for name in order_names if name in fams]  # catalogue.yaml order
     return Overview(
         families=families,
         base_enabled=dict(base),

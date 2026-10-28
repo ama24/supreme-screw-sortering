@@ -32,6 +32,12 @@ SYMMETRY: dict[str, tuple[str | int, bool]] = {
     "washer": ("continuous", True),
     "tnut_slide": (2, False),
     "tnut_drop": (2, False),
+    # unknown (junk) parts: round ones merge their lying poses like the screws do
+    "unknown_wood_screw": ("continuous", False),
+    "unknown_threaded_rod": ("continuous", True),
+    "unknown_pin": ("continuous", True),
+    "unknown_standoff": (6, True),
+    "unknown_tooth_washer": ("continuous", True),
 }
 
 CATEGORIES_SCREW = ("side", "standing_on_head", "standing_on_tip")

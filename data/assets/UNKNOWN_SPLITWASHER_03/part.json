@@ -1,0 +1,102 @@
+{
+  "id": "UNKNOWN_SPLITWASHER_03",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_split_washer",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "d": 7.77,
+    "seed": 462010.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "zinc_yellow",
+    "black_oxide",
+    "stainless_a2",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        1.834721
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -1.834721
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 256,
+    "triangles": 508,
+    "watertight": true,
+    "volume_mm3": 207.34746748563683,
+    "area_mm2": 353.68006387192463,
+    "bbox_min": [
+      -7.047276020050049,
+      -7.059999942779541,
+      -1.8347208499908447
+    ],
+    "bbox_max": [
+      7.047276020050049,
+      7.059999942779541,
+      1.8347208499908447
+    ],
+    "center_of_mass": [
+      -0.15716469420749088,
+      1.827638072140769e-16,
+      1.713410692631971e-17
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        508
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 1,
+    "triangles": 142
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "b616952cc5c586d7"
+}

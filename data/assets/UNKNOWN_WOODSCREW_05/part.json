@@ -1,0 +1,103 @@
+{
+  "id": "UNKNOWN_WOODSCREW_05",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_wood_screw",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "d": 4.67,
+    "length": 32.95,
+    "seed": 573400.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "zinc_yellow",
+    "black_oxide",
+    "stainless_a2",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.335
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -32.950001
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -15.3075
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 7819,
+    "triangles": 15634,
+    "watertight": true,
+    "volume_mm3": 484.4458075577032,
+    "area_mm2": 634.980692562862,
+    "bbox_min": [
+      -4.670000076293945,
+      -4.670000076293945,
+      -32.95000076293945
+    ],
+    "bbox_max": [
+      4.670000076293945,
+      4.670000076293945,
+      2.3350000381469727
+    ],
+    "center_of_mass": [
+      -0.0008761747382802439,
+      -0.0009222579623900682,
+      -11.454876362617982
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        15634
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 122
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "8d51de76753a1014"
+}

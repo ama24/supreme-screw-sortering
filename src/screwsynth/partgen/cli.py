@@ -127,6 +127,11 @@ def contact_sheet_parts(cat: Catalogue) -> list[Part]:
         key = next((k for k in keys if k.endswith("M4")), keys[len(keys) // 2])
         of_size = by_key[key]
         chosen.append(of_size[len(of_size) // 2])
+    shapes: set[str] = set()  # unknown parts: one variant of each type
+    for p in cat.enabled_parts:
+        if p.kind == "unknown" and p.shape not in shapes:
+            shapes.add(p.shape)
+            chosen.append(p)
     return chosen
 
 

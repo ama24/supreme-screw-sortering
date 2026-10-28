@@ -1,0 +1,103 @@
+{
+  "id": "UNKNOWN_WOODSCREW_02",
+  "class_name": "UNKNOWN",
+  "family": "UNKNOWN",
+  "kind": "unknown",
+  "shape": "unknown_wood_screw",
+  "size": "-",
+  "length": null,
+  "pitch": null,
+  "fully_threaded": null,
+  "dims": {
+    "d": 4.3,
+    "length": 48.35,
+    "seed": 893989.0
+  },
+  "finishes": [
+    "zinc_clear",
+    "zinc_yellow",
+    "black_oxide",
+    "stainless_a2",
+    "plain_steel",
+    "brass"
+  ],
+  "nominal_length_mm": null,
+  "nominal_length_mode": null,
+  "keypoints": {
+    "head_top": {
+      "xyz": [
+        0.0,
+        0.0,
+        2.15
+      ],
+      "labelled": false
+    },
+    "bearing": {
+      "xyz": [
+        0.0,
+        0.0,
+        -48.349998
+      ],
+      "labelled": false
+    },
+    "tip": {
+      "xyz": [
+        0.0,
+        0.0,
+        -23.099999
+      ],
+      "labelled": false
+    }
+  },
+  "axis_height_when_lying": null,
+  "frame": "local: axis +z; screws: bearing at z=0, head +z, tip -z; others centred",
+  "units": "mm",
+  "mesh": {
+    "file": "render.ply",
+    "vertices": 12299,
+    "triangles": 24594,
+    "watertight": true,
+    "volume_mm3": 581.5130359131381,
+    "area_mm2": 794.136864866328,
+    "bbox_min": [
+      -4.300000190734863,
+      -4.300000190734863,
+      -48.349998474121094
+    ],
+    "bbox_max": [
+      4.300000190734863,
+      4.300000190734863,
+      2.1500000953674316
+    ],
+    "center_of_mass": [
+      -0.00030395341884862634,
+      0.0006815295352730057,
+      -18.818639696095463
+    ],
+    "material_slots": {
+      "body": [
+        0,
+        24594
+      ]
+    }
+  },
+  "collision": {
+    "file": "collision.obj",
+    "pieces": 2,
+    "triangles": 122
+  },
+  "checks": {
+    "passed": true,
+    "problems": []
+  },
+  "source": "parametric",
+  "info": {},
+  "generator_version": "1",
+  "lod": "med",
+  "lod_params": {
+    "thread_segments": 40,
+    "axial_per_pitch": 12,
+    "round_segments": 64
+  },
+  "catalogue_hash": "59f37a589d33a686"
+}

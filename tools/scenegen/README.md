@@ -208,6 +208,7 @@ Per object:
 | `min_gap_mm`, `crowded_gap_mm`, `touch_probability` | 1.0, −0.3, 0.5 | Spacing and touching |
 | `area_margin_mm`, `max_place_tries` | 3, 60 | Placement |
 | `balance_slack`, `finish_weights` | 1, {} | Class balancing and finish weights |
+| `unknown_fraction` | 0.08 | Share of parts that are unknown junk (class UNKNOWN), drawn outside the class balancing |
 | `variants_per_layout`, `keypoint_window_px` | 1, 2 | Lighting variants and keypoint visibility window |
 | `nominal_camera.*` | 4.74 mm, 1.4 µm, 4608×2592, 300 mm | `--nominal-camera` |
 | `physics.*` | drop 0.05 mm, top clearance 0.5 mm, reach 20 mm, 0.4–1.5 s, 20 substeps/iters, friction 0.6, margin 0.05 mm | Settle |

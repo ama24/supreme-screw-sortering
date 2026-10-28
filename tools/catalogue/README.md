@@ -88,6 +88,20 @@ by length, and each entry needs a `path` and `keypoints` (`head_top`, `bearing`,
 the STEP file's own coordinates; optional `units`, default mm). Tool 02 aligns the part from the keypoints. Other kinds give a single `step: {path: ...}`. For now these fields are only stored and
 validated here; tool 02 converts the files. See [templates/family_template.yaml](templates/family_template.yaml).
 
+### Unknown parts (`unknown:`)
+Junk that ends up on the plate but is not a catalogue part all gets one class, `UNKNOWN`, so the
+machine can reject it.
+- **Types:** `wood_screw`, `threaded_rod`, `split_washer`, `tooth_washer`, `pin`, `bracket`,
+  `standoff`, `plate` and `blob`.
+- **Variants:** each type gets `variants` shapes (default 6), with ids `UNKNOWN_WOODSCREW_01`, …
+- **Parameters:** each variant's parameters are drawn from the type's ranges (mm), seeded by the part
+  id, so an id always gives the same part. The defaults are in `UNKNOWN_TYPES` in `schema.py`.
+- **Finishes:** set per section (`finishes`) or per type.
+- **Switching off:** use `enabled: false` (the whole section, or one type) or a rule:
+  `{match: UNKNOWN}` for all, `{match: "UNKNOWN_BLOB_*"}` for one type.
+
+The class `UNKNOWN` sorts last, so adding it does not change the ids of the real classes.
+
 ## CLI: `screwsynth-catalogue`
 
 Every command accepts `--config`, `--catalogue`, `--max-length MM` and `-v`.
