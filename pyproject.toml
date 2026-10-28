@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "screwsynth"
+version = "0.1.0"
+description = "Synthetic data (BlenderProc) and YOLO models to detect and measure metric fasteners"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = [
+    "pyyaml>=6.0",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+catalogue = ["ruamel.yaml>=0.18", "pydantic>=2.5"]
+partgen = ["numpy>=1.24", "trimesh>=4.0"]
+calib = ["opencv-contrib-python>=4.8"]
+train = ["ultralytics>=8.3"]
+dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5"]
+
+[project.scripts]
+# Tool entry points are added by each tool's PR, e.g.
+# screwsynth-catalogue = "screwsynth.catalogue.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/screwsynth"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "slow: needs Blender, a GPU, network or long runtimes (deselect with -m \"not slow\")",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "PTH"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["screwsynth"]

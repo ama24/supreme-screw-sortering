@@ -1,0 +1,39 @@
+# Generated outputs
+output/
+datasets/
+runs/
+*.hdf5
+
+# Large generated binaries in data/assets (keep part.json metadata)
+data/assets/**/*.ply
+data/assets/**/*.obj
+data/assets/**/*.stl
+data/assets/**/*.glb
+data/assets/**/*.png
+!data/assets/**/part.json
+
+# Model weights
+*.pt
+*.onnx
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,89 @@
+PROMPT 03 — CAMERA CALIBRATION TOOL
+===================================
+
+CONTEXT
+Read CLAUDE.md first. This tool calibrates the real Raspberry Pi Camera Module 3 so the Blender
+camera matches it exactly, and measures the sensor/lighting characteristics used to make renders
+look like real captures. It has two halves: capture scripts that run ON THE RASPBERRY PI
+(Picamera2), and solving scripts that run on the PC (OpenCV contrib, cv2.aruco ChArUco API of
+OpenCV >= 4.7). Work in branch tool/calibration and open a pull request at the end.
+
+OUTPUTS (data/calibration/)
+- camera_settings.json  locked capture settings (lens position, exposure time, analogue gain,
+                        colour gains, resolution, sensor mode) used for ALL future captures
+- calibration.json      image size, camera matrix K, distortion coefficients (OpenCV model),
+                        reprojection RMS, per-image errors, board spec, date;
+                        T_cam_plate (rotation + translation, mm) from the extrinsic step;
+                        ROI (x0, y0, w, h) covering the working area plus margin;
+                        px_per_mm at the plate surface; plate-to-image homography
+- sensor_profile.json   noise model (variance vs intensity per channel), vignetting/flat-field map
+                        reference, black level, colour statistics of the empty plate
+- flatfield.png, plate_empty.png (undistorted ROI crop of the empty plate, used as Blender texture),
+  report.html (all plots and checks)
+
+PART A — BOARD (PC)
+- Script to generate a printable ChArUco board PDF at exact scale: default 9 x 7 squares, 15 mm
+  squares, 11 mm markers, DICT_5X5_100, with a 100 mm scale bar and printing instructions
+  ("print at 100% / actual size, glue to glass, measure square size with calipers").
+- The solver takes the MEASURED square size as an argument (--square-mm) rather than the nominal one.
+- Optional: generate 4 small ArUco corner markers (different dictionary ids) for the plate corners,
+  as SVG/STL-friendly outlines for multi-colour printing, and record their ids in config.
+
+PART B — CAPTURE (Raspberry Pi, Picamera2)
+- lock_settings.py: start the camera at full resolution 4608 x 2592, let auto-exposure/AWB settle on
+  the empty plate under the rig light, then freeze exposure, gain and colour gains; set autofocus
+  to manual and sweep lens positions to find the sharpest on the plate (focus metric: variance of
+  Laplacian on the centre region), set that lens position, save camera_settings.json.
+- capture.py: capture with exactly those settings (refuse to run if they cannot be applied); modes:
+    --mode intrinsics   interactive loop: press Enter to capture, shows live coverage map of where
+                        board corners have been seen across the frame and warns about blur
+    --mode extrinsic    single capture with the board lying flat on the TPU plate
+    --mode sensor       N frames (default 20) of the same static scene, plus empty-plate and
+                        white-sheet captures
+    --mode single       one capture (used later by tool 09)
+  Save as lossless PNG (or DNG raw if requested) with a JSON sidecar of the actual metadata.
+- Document how to copy captures to the PC (scp/rsync) or run the solver directly on the Pi.
+
+PART C — SOLVE (PC)
+- intrinsics.py: detect ChArUco corners, reject blurry/poor views, calibrate (standard 5-coefficient
+  model; optionally rational model, choose by held-out reprojection error), report RMS and per-view
+  error, plot coverage and residuals. Target RMS < 0.5 px, warn if above.
+- extrinsic.py: from the flat-board image solve the board pose (solvePnP refined), define the plate
+  frame (origin at the board's first corner, z up toward the camera, z = 0 on the board surface;
+  allow an offset for paper+glass thickness so z = 0 is the TPU surface: --board-thickness-mm),
+  compute T_cam_plate, plate homography, px_per_mm, and the ROI covering the 220 x 220 mm working
+  area (ask me for the working-area corners relative to the board, or detect them from the
+  corner ArUco markers if present).
+- sensor.py: from the repeated frames estimate per-pixel mean/variance and fit a noise model
+  (variance = a * intensity + b per channel); from the white-sheet frame build a smooth flat-field
+  (low-order polynomial or heavy blur); from the empty plate store colour statistics; save the
+  undistorted ROI crop plate_empty.png.
+- validate.py: given an image of objects of known length (I will type the caliper values), measure
+  end-to-end in mm using undistortion + plate homography and report errors. Target < 0.1-0.2 mm.
+- recheck.py: quick check from one flat-board image; reports how far the pose has drifted and
+  whether extrinsic recalibration is needed.
+
+CLI (entry point "screwsynth-calib", PC side): board, intrinsics, extrinsic, sensor, validate,
+recheck, report. Pi scripts live in tools/calibration/pi/ with their own requirements.txt.
+
+STEP-BY-STEP USER GUIDE (tools/calibration/README.md)
+Write the procedure as numbered steps a non-expert can follow:
+1 freeze the rig (camera mounted, lights on, Y homed, TPU plate in place)
+2 lock settings on the Pi
+3 print, glue and measure the board
+4 capture 25-40 intrinsic views: whole frame coverage, rotations, tilts only about +/-15 deg
+  (depth of field at 300 mm with locked focus is only roughly +/-20 mm)
+5 solve intrinsics, check RMS, retake bad views
+6 board flat on the TPU plate, Y homed, capture extrinsic, solve
+7 validate with caliper-measured parts
+8 capture sensor frames, empty plate, white sheet; solve sensor profile
+9 when to recheck (camera touched, focus changed, plate changed)
+
+TESTS
+- Synthetic test: render a ChArUco board with a known K, distortion and pose using OpenCV
+  projection, run the solver, recover parameters within tight tolerance.
+- Homography measurement test on a synthetic image.
+
+ACCEPTANCE
+- All outputs are produced from a sample capture set (include a tiny synthetic sample set for CI).
+- calibration.json is the only file tool 05 needs to build the Blender camera; document its schema.

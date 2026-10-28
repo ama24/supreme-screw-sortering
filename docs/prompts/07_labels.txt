@@ -1,0 +1,72 @@
+PROMPT 07 — LABEL EXPORT TOOL
+=============================
+
+CONTEXT
+Read CLAUDE.md first. After tools 05 and 06 every processed scene has an image, a 16-bit instance
+mask (pixel value = instance id, 0 = background) and meta.json mapping each instance id to its part,
+class, keypoints and ground truth. Nobody labels anything by hand: this tool converts that ground
+truth into training datasets. It runs in normal Python. Work in branch tool/labels and open a pull
+request.
+
+INPUT
+output/<run>/processed/* (tool 06). Class list from configs/classes.yaml.
+
+PER OBJECT
+1. Visible mask = (instance == id). Drop objects whose visible_pixel_fraction is below a threshold
+   (config, default 0.25) or whose mask area is below a minimum pixel count; record dropped objects
+   in a report. Objects cut by the image border are kept if enough remains visible.
+2. Polygon: outer contour(s) of the visible mask (cv2.findContours, RETR_EXTERNAL). If the visible
+   region is split into several pieces by an occluder, merge them into one polygon the way
+   Ultralytics expects (connect pieces with zero-width bridges) or keep the largest piece (config).
+   Simplify with a tolerance in pixels (config, default 0.7 px at full resolution) and keep enough
+   points for thin parts like M2 screws.
+3. Axis-aligned box: from the visible mask.
+4. Oriented box: cv2.minAreaRect of the visible mask (for YOLO-OBB).
+5. Keypoints: from meta.json (already distorted by tool 06), with visibility 0/1/2 using the
+   COCO convention (0 = not labelled, 1 = labelled but occluded, 2 = visible). Non-screws: all 0.
+
+EXPORT FORMATS (each optional via flags; default: seg + pose + coco)
+- YOLO segmentation (also trains detection): one .txt per image, lines
+  "class x1 y1 x2 y2 ..." normalised to [0,1].
+- YOLO detection: "class cx cy w h".
+- YOLO OBB: "class x1 y1 x2 y2 x3 y3 x4 y4".
+- YOLO pose: "class cx cy w h kx1 ky1 v1 kx2 ky2 v2 kx3 ky3 v3" with kpt_shape [3, 3] and the
+  correct flip_idx in the dataset yaml.
+- COCO JSON (RLE or polygon) for other tools and for evaluation with pycocotools.
+- Measurement-crop dataset for stage 2: for every measurable screw (flag from meta.json), a
+  full-resolution crop centred on the object (fixed size, config default 384 px, or scaled to the
+  object length), with keypoints in crop coordinates, the ground truth nominal length, size, axis
+  heights, and the crop's offset in the full ROI image, written as YOLO-pose labels plus a CSV.
+
+RESOLUTION
+Stage 1 trains on the ROI downscaled to config stage1_imgsz (default 1024). Write images at that size
+(labels are normalised, so they stay valid) to save disk and loader time; keep the full-res path in
+a sidecar so crops can be regenerated.
+
+SPLITS AND DATASET FILES
+- Split by scene (never split objects of one scene across sets), default 90/10 train/val,
+  deterministic by seed. A real-image validation set (tool 09) is added as a separate "val_real"
+  entry when present.
+- Write the Ultralytics dataset yaml(s) with paths, names (from classes.yaml) and kpt settings.
+- Write stats: images, instances per class, per finish, per size, per length; flag classes with
+  fewer than a configurable minimum number of instances (default 3000).
+
+PREVIEW
+`screwsynth-labels preview --dataset D --n 20` draws polygons (one colour per instance), boxes,
+class names and keypoints over the images and writes a contact sheet, so I can check labels by eye.
+Also a "check" command that verifies every label file parses, every class id exists, coordinates
+are within range, and polygon area is consistent with mask area.
+
+CLI (entry point "screwsynth-labels"): export --run NAME --out datasets/NAME [--formats seg,pose,obb,
+det,coco,crops] [--imgsz 1024], preview, check, stats, merge (combine several runs into one dataset).
+
+TESTS
+- Round trip on a synthetic mask: polygon rasterised back has IoU > 0.97 with the source mask,
+  including a thin 2-mm-wide object at 11.7 px/mm.
+- Split never leaks a scene across sets.
+- Pose label format matches what Ultralytics loads (load a tiny dataset with the Ultralytics
+  dataset loader in a test, marked slow).
+
+ACCEPTANCE
+- Exporting a 10-scene preview run produces valid datasets in all formats and a preview sheet.
+- README explains each format with an example line and the measurement-crop dataset.

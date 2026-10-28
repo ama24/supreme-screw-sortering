@@ -1,0 +1,81 @@
+# screw-synth main configuration.
+# Units: lengths in millimetres, angles in degrees (code converts to radians).
+# Paths are relative to the repository root. Every tool reads only its own section plus `paths`,
+# `world_scale` and `seed`. Each tool's PR fills in its section; keys here are the defaults named in
+# docs/prompts/.
+
+# Global random seed. Every random choice derives from it; same seed -> same output.
+seed: 0
+
+# Blender scene scale: blender_units = mm * 0.001 * world_scale (Bullet is unstable at mm scale).
+world_scale: 10
+
+logging:
+  level: INFO
+
+paths:
+  catalogue: configs/catalogue.yaml
+  classes: configs/classes.yaml
+  calibration_dir: data/calibration
+  plate_dir: data/plate
+  assets_dir: data/assets
+  rest_poses_dir: data/rest_poses
+  real_dir: data/real
+  output_dir: output
+  datasets_dir: datasets
+
+# 01 catalogue — parts, sizes, lengths, finishes
+catalogue:
+  max_length_mm: 80          # longest screw length expanded from the standard length lists
+
+# 02 partgen — parametric meshes, collision proxies, keypoints
+partgen:
+  lod: med                   # low | med | high (thread segments per turn, radial segments)
+  max_triangles: 200000      # budget for the largest part (M10x80)
+
+# 03 calibration — Pi Camera 3 intrinsics, extrinsics, sensor profile
+calibration:
+  board:
+    squares_x: 9
+    squares_y: 7
+    square_mm: 15.0          # nominal; the solver takes the MEASURED size via --square-mm
+    marker_mm: 11.0
+    dictionary: DICT_5X5_100
+  target_rms_px: 0.5
+  board_thickness_mm: 0.0    # paper + glass, so z = 0 lands on the TPU surface
+  working_area_mm: [220, 220]
+
+# 04 restposes — stable resting poses
+restposes:
+  samples: 2000
+  min_probability: 0.02
+  measurable_tilt_deg: 15
+  validate_drops: 50
+
+# 05 scenegen — BlenderProc rendering
+scenegen:
+  objects: [15, 40]          # number of objects per scene
+  variants_per_layout: 1
+  nominal_camera:            # used with --nominal-camera until real calibration exists
+    focal_length_mm: 4.74
+    pixel_size_um: 1.4
+    resolution: [4608, 2592]
+    height_mm: 300
+
+# 06 postprocess — camera and sensor simulation
+postprocess: {}
+
+# 07 labels — dataset export
+labels:
+  stage1_imgsz: 1024
+  min_visible_fraction: 0.25
+  polygon_tolerance_px: 0.7
+  crop_size_px: 384
+  split: { train: 0.9, val: 0.1 }
+  min_instances_per_class: 3000
+
+# 08 train — stage 1, stage 2, measurement
+train: {}
+
+# 09 realdata — real captures and sim-to-real
+realdata: {}

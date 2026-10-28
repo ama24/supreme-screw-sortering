@@ -1,0 +1,52 @@
+PROMPT 06 — POST-PROCESS TOOL (camera and sensor simulation)
+============================================================
+
+CONTEXT
+Read CLAUDE.md first. Tool 05 renders ideal, undistorted images. This tool makes them look like
+real Pi Camera 3 captures and keeps the labels consistent. It runs in normal Python (OpenCV,
+numpy). Work in branch tool/postprocess and open a pull request.
+
+INPUTS
+output/<run>/scenes/*/rgb.png, instance.png, meta.json (tool 05);
+data/calibration/calibration.json and sensor_profile.json, flatfield.png (tool 03).
+
+PROCESSING ORDER (per scene)
+1. Lens distortion: build distortion remap maps once from K and the distortion coefficients for the
+   ROI (account for the ROI offset in the principal point). The render is undistorted, so we must
+   apply the FORWARD distortion: for every output (distorted) pixel compute the corresponding
+   undistorted location (cv2.undistortPoints on the pixel grid, then re-project with K) and sample.
+   - RGB: bilinear (or Lanczos) interpolation.
+   - Instance mask: NEAREST interpolation only, so ids never blend.
+   - Keypoints in meta.json: distort with the same model (cv2.projectPoints style) and update; mark
+     keypoints falling outside the image as not visible.
+   Write a test that a straight line on the plate becomes the same curve in the distorted render
+   as it does in the real calibration images (synthetic check with known coefficients), and that the
+   mask and RGB stay aligned (object edges coincide within 1 px).
+2. Vignetting / flat-field: multiply by the normalised flat-field (with a random strength jitter).
+3. Optics: slight Gaussian blur (sigma range in config) to match the real lens MTF; optional mild
+   chromatic aberration (per-channel tiny scale) off by default.
+4. Exposure/colour jitter: small gain, gamma and white-balance variations within config ranges,
+   centred on the real colour statistics of the empty plate.
+5. Sensor noise: signal-dependent noise from sensor_profile.json (variance = a * I + b per channel),
+   applied in linear space; option to add a fixed-pattern component.
+6. Compression: JPEG at a random quality in a config range (match what the Pi pipeline will save in
+   production; if production saves PNG, keep a small probability of JPEG for robustness).
+Each step can be enabled/disabled and has its probability and ranges in the postprocess section of
+configs/config.yaml. Store the exact parameters applied per image in meta.json under "postprocess".
+
+OUTPUT
+output/<run>/processed/<scene_id>/ image.jpg|png, instance.png (distorted), meta.json (updated
+keypoints, postprocess params). Never modify the raw renders. Multiprocessing over scenes; resumable.
+
+REALISM CHECK COMMAND
+`screwsynth-post compare --run NAME --real data/real/<set>`: side-by-side tiles and simple
+statistics (intensity histograms per channel, noise level vs intensity, sharpness/edge-width at
+object borders, colour of plate) for synthetic vs real images, saved as an HTML report, so I can
+tune the config ranges.
+
+CLI (entry point "screwsynth-post"): run --run NAME [--workers N] [--resume], compare, show --scene ID
+(before/after image with mask outline and keypoints overlaid).
+
+ACCEPTANCE
+- Mask/RGB alignment test passes; keypoints remain on the correct features after distortion.
+- README documents each effect, its config keys, and how to tune using the compare report.
