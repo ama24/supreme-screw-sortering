@@ -1,6 +1,6 @@
 import pytest
-from conftest import SHIPPED
 
+from conftest import SHIPPED
 from screwsynth.catalogue.schema import CatalogueError, load_catalogue, parse_catalogue
 from screwsynth.catalogue.validate import errors, validate
 from screwsynth.common.config import load_config

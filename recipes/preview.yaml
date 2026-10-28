@@ -1,0 +1,13 @@
+# Quick check of the whole pipeline: 10 low-quality scenes with the nominal camera.
+# Edit in the GUI (screwsynth-gui) or here; `config:` holds only values that differ from
+# configs/config.yaml.
+name: preview
+description: Quick look at the whole pipeline (10 low-quality scenes, nominal camera)
+pipeline:
+  camera: nominal
+  scenes: 10
+  chunk: 200
+  preview: true
+  steps: [catalogue, parts, restposes, render, postprocess, labels]
+  formats: [seg, pose, coco, crops]
+config: {}

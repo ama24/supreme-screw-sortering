@@ -34,7 +34,9 @@ def main(argv=None) -> int:
         description=USAGE, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     ap.add_argument("--run", required=True, help="output/<run>")
-    ap.add_argument("--scenes", type=int, default=1)
+    ap.add_argument(
+        "--scenes", type=int, default=None, help="default 1 (--preview: scenegen.preview.scenes)"
+    )
     ap.add_argument("--start", type=int, default=0, help="index of the first scene (batch chunks)")
     ap.add_argument("--seed", type=int, default=None, help="default: config seed")
     ap.add_argument("--resume", action="store_true", help="skip scenes whose meta.json exists")
@@ -51,8 +53,8 @@ def main(argv=None) -> int:
 
     cfg = load_config(args.config)
     scenes = args.scenes
-    if args.preview:
-        scenes = int((cfg.get("scenegen.preview", {}) or {}).get("scenes", 10))
+    if scenes is None:
+        scenes = int(cfg.get("scenegen.preview.scenes", 10)) if args.preview else 1
     stats = run(
         RunArgs(
             args.run,

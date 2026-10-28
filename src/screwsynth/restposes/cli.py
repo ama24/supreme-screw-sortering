@@ -14,7 +14,7 @@ import numpy as np
 import trimesh
 from PIL import Image, ImageDraw
 
-from screwsynth.catalogue.schema import load_catalogue
+from screwsynth.catalogue.schema import catalogue_from_config
 from screwsynth.common.config import load_config
 from screwsynth.common.io import read_json, write_json
 from screwsynth.common.log import setup_logging
@@ -39,10 +39,7 @@ class _Ctx:
         self.out_dir = resolve(args.out_dir or cfg.get("paths.rest_poses_dir", "data/rest_poses"))
         self.settings = Settings.from_config(cfg.get("restposes", {}), int(cfg.get("seed", 0)))
         self.drops = int(cfg.get("restposes.validate_drops", 50))
-        self.catalogue = load_catalogue(
-            resolve(cfg.get("paths.catalogue", "configs/catalogue.yaml")),
-            max_length_mm=cfg.get("catalogue.max_length_mm"),
-        )
+        self.catalogue = catalogue_from_config(cfg)
 
     def ids(self, args: argparse.Namespace) -> list[str]:
         if getattr(args, "id", None):

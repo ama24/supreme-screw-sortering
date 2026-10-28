@@ -162,9 +162,9 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
 
     classes_doc = read_yaml(paths["classes"])
     class_ids = {name: int(i) for i, name in classes_doc["names"].items()}
-    from screwsynth.catalogue.schema import load_catalogue
+    from screwsynth.catalogue.schema import catalogue_from_config
 
-    catalogue = load_catalogue(paths["catalogue"], cfg.get("catalogue.max_length_mm"))
+    catalogue = catalogue_from_config(cfg)
     enabled = {p.id for p in catalogue.enabled_parts}
     infos = parts_from_assets(
         paths["assets_dir"], list(class_ids), enabled, paths["rest_poses_dir"]

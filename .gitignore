@@ -41,3 +41,6 @@ Thumbs.db
 # Generated rest poses (regenerate with screwsynth-restposes compute --all)
 data/rest_poses/*.json
 data/rest_poses/*.png
+
+# NiceGUI local storage (GUI remembers the last recipe)
+.nicegui/

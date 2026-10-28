@@ -8,8 +8,10 @@ The full build guide (one prompt per tool) lives in [docs/prompts/](docs/prompts
 the tool you are working on before changing it.
 
 ## Workflow
-- Each tool is built from its own prompt (01 to 09), on its own branch `tool/<name>`, and merged
-  through a pull request into `main`. Never push to `main` directly.
+- All code lives on `main`. Each piece of work (a tool from its prompt 01 to 09, a feature, a fix)
+  gets a short-lived branch (`tool/<name>`, `feature/<name>`, `fix/<name>`), a pull request into
+  `main`, and is deleted after merging. Do not stack branches on each other. Never push to `main`
+  directly.
 - Run `pytest` and `ruff check .` before every commit.
 
 ## Hardware
@@ -51,6 +53,13 @@ the tool you are working on before changing it.
 | 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation |
 | 09 | realdata    | capture and label a real validation set, compare real vs synthetic |
 
+The dataset builder (`src/screwsynth/pipeline`, `screwsynth-dataset` / `screwsynth-gui`) runs 01, 02, 04,
+05, 06 and 07 from one recipe (`recipes/<name>.yaml`) as subprocesses. Each step is called with
+`--config output/<name>/config.yaml`. When a tool gains a step or a setting, keep it runnable
+from that merged config. New config keys appear in the GUI automatically: give them a `#` comment.
+Every tool reads the catalogue through `catalogue_from_config()`, so `catalogue.extra_rules`
+(the recipe's part selection) applies to all of them.
+
 ## Conventions (binding for all tools)
 - Units: every length in configs and metadata is in millimetres. Angles in degrees in configs,
   radians in code.
@@ -82,6 +91,9 @@ the tool you are working on before changing it.
 
 ## Layout
 - `configs/config.yaml` — one section per tool; load with `screwsynth.common.config.load_config()`.
+- `recipes/` — dataset recipes (pipeline settings + config overrides).
+- `requirements.lock.txt` — exact package versions; regenerate with `pip freeze --exclude-editable`
+  when deliberately upgrading.
 - `configs/catalogue.yaml` — parts (tool 01); `configs/classes.yaml` is generated from it.
 - `data/` — calibration, plate texture, generated assets, rest poses, real captures.
 - `output/` — render runs (gitignored). `datasets/` — exported datasets (gitignored).

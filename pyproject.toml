@@ -20,8 +20,9 @@ partgen = ["numpy>=1.24", "trimesh>=4.0", "manifold3d>=3.0", "pillow>=10.0", "ne
 calib = ["opencv-contrib-python>=4.8", "matplotlib>=3.7", "pillow>=10.0"]
 train = ["ultralytics>=8.3"]
 dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5", "ruamel.yaml>=0.18"]
+gui = ["nicegui>=3.0", "ruamel.yaml>=0.18", "pillow>=10.0"]
 # everything except training (PyTorch is large and needs the CUDA build, see README)
-all = ["screwsynth[catalogue,partgen,calib,dev]"]
+all = ["screwsynth[catalogue,partgen,calib,gui,dev]"]
 
 [project.scripts]
 screwsynth-catalogue = "screwsynth.catalogue.cli:main"
@@ -30,6 +31,8 @@ screwsynth-restposes = "screwsynth.restposes.cli:main"
 screwsynth-calib = "screwsynth.calibration.cli:main"
 screwsynth-post = "screwsynth.postprocess.cli:main"
 screwsynth-labels = "screwsynth.labels.cli:main"
+screwsynth-dataset = "screwsynth.pipeline.cli:main"
+screwsynth-gui = "screwsynth.pipeline.cli:gui_entry"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/screwsynth"]

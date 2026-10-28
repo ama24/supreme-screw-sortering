@@ -396,13 +396,7 @@ def parse_catalogue(data: Any, max_length_mm: float | None = None) -> Catalogue:
         str(name): parse_family(str(name), raw)
         for name, raw in _expect(data.get("families", {}) or {}, Mapping, "families").items()
     }
-    rules = []
-    for i, raw in enumerate(_expect(data.get("rules", []) or [], Sequence, "rules")):
-        _expect(raw, Mapping, f"rules[{i}]")
-        _check_keys(raw, {"match", "enabled"}, f"rules[{i}]")
-        if "match" not in raw or "enabled" not in raw:
-            raise CatalogueError(f"rules[{i}]: needs both 'match' and 'enabled'")
-        rules.append(Rule(match=str(raw["match"]), enabled=bool(raw["enabled"])))
+    rules = parse_rules(data.get("rules", []), "rules")
     return Catalogue(
         version=int(data.get("version", 1)),
         finishes=finishes,
@@ -412,10 +406,39 @@ def parse_catalogue(data: Any, max_length_mm: float | None = None) -> Catalogue:
     )
 
 
+def parse_rules(data: Any, where: str) -> list[Rule]:
+    """[{match: <glob>, enabled: bool}, ...] -> rules (applied in order; the last match wins)."""
+    rules = []
+    for i, raw in enumerate(_expect(data or [], Sequence, where)):
+        _expect(raw, Mapping, f"{where}[{i}]")
+        _check_keys(raw, {"match", "enabled"}, f"{where}[{i}]")
+        if "match" not in raw or "enabled" not in raw:
+            raise CatalogueError(f"{where}[{i}]: needs both 'match' and 'enabled'")
+        rules.append(Rule(match=str(raw["match"]), enabled=bool(raw["enabled"])))
+    return rules
+
+
 def load_catalogue(path: str | os.PathLike[str], max_length_mm: float | None = None) -> Catalogue:
     from screwsynth.common.io import read_yaml
 
     return parse_catalogue(read_yaml(path), max_length_mm=max_length_mm)
+
+
+def catalogue_from_config(cfg: Any, path: str | os.PathLike[str] | None = None) -> Catalogue:
+    """The catalogue as every tool should see it: paths.catalogue, catalogue.max_length_mm, and the
+    config's catalogue.extra_rules applied after the file's own rules. Dataset recipes select their
+    parts through extra_rules, so catalogue.yaml itself never has to change per dataset."""
+    from screwsynth.common.paths import resolve
+
+    cat = load_catalogue(
+        resolve(path or cfg.get("paths.catalogue", "configs/catalogue.yaml")),
+        max_length_mm=cfg.get("catalogue.max_length_mm"),
+    )
+    cat.rules = [
+        *cat.rules,
+        *parse_rules(cfg.get("catalogue.extra_rules"), "catalogue.extra_rules"),
+    ]
+    return cat
 
 
 # ----------------------------------------------------------------------------------- expansion
