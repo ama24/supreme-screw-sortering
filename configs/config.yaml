@@ -84,15 +84,80 @@ restposes:
   #  - {match: "DIN912*", category: standing_on_head, weight: 0}
   #  - {match: "DIN125A*", category: edge, weight: 0}
 
-# 05 scenegen — BlenderProc rendering
+# 05 scenegen — BlenderProc rendering (see tools/scenegen/README.md for every key)
 scenegen:
-  objects: [15, 40]          # number of objects per scene
-  variants_per_layout: 1
-  nominal_camera:            # used with --nominal-camera until real calibration exists
+  # composition
+  objects: [15, 40]            # objects per normal scene
+  few_fraction: 0.1            # fraction of scenes with very few objects
+  few_objects: [1, 5]
+  crowded_fraction: 0.2        # fraction of crowded scenes where parts touch
+  crowded_objects: [30, 50]
+  crowded_gap_mm: -0.3         # footprints may overlap this much in crowded scenes (parts touch/lean)
+  touch_probability: 0.5       # crowded: chance a part is slid against an existing one
+  min_gap_mm: 1.0              # normal scenes: minimum gap between footprints
+  area_margin_mm: 3.0          # keep footprints this far inside the visible working area
+  max_place_tries: 60
+  balance_slack: 1             # draw among classes with count <= min count + slack
+  finish_weights: {}           # optional finish -> relative weight (default 1)
+  variants_per_layout: 1       # extra lighting variants of the same arrangement
+  keypoint_window_px: 2        # keypoint visibility: own pixels searched within this radius
+  nominal_camera:              # --nominal-camera (until real calibration exists)
     focal_length_mm: 4.74
     pixel_size_um: 1.4
     resolution: [4608, 2592]
     height_mm: 300
+  physics:
+    drop_mm: 0.05              # start this far above the rest pose
+    min_time: 0.4              # seconds of simulation (short settle)
+    max_time: 1.5
+    check_interval: 0.2
+    substeps: 20
+    solver_iters: 20
+    friction: 0.6
+    angular_damping: 0.3
+    linear_damping: 0.1
+    collision_margin_mm: 0.05
+  discard:
+    max_lift_mm: 0.3           # lowest point higher than this -> stacked on another part
+    max_move_mm: 15.0          # moved further than this during the settle
+    below_plate_mm: 1.0        # fell through the plate
+  render:
+    device: OPTIX
+    samples: 64                # max samples (adaptive sampling stops earlier)
+    noise_threshold: 0.02
+    denoiser: OPTIX            # OPTIX | INTEL | none
+    resolution_scale: 1.0      # 1.0 = full ROI resolution
+    max_bounces: 6
+    diffuse_bounces: 3
+    glossy_bounces: 4
+    transmission_bounces: 2
+    exposure: [0.0, 0.0]       # EV jitter range (tool 06 also jitters exposure)
+    depth: false               # also save depth.npy
+  preview:
+    scenes: 10
+    resolution_scale: 0.25
+    samples: 16
+  plate:
+    thickness_mm: 1.75
+    grid: 24                   # UV grid resolution of the plate (perspective-correct texture)
+    roughness: [0.6, 0.9]
+    bump_strength: [0.0, 0.15] # print lines
+    line_pitch_mm: 0.4
+    solid_colour_probability: 0.1   # domain randomisation: solid plate colour instead of plate_empty.png
+    solid_colours: [[0.12, 0.35, 0.65], [0.15, 0.5, 0.25], [0.6, 0.15, 0.15], [0.5, 0.5, 0.5]]
+  shroud:
+    colour: [0.02, 0.02, 0.02]
+    half_width_mm: 220
+    height_mm: 420
+  lights:
+    panel_size_mm: [250, 400]
+    height_mm: [320, 380]
+    offset_mm: [0, 40]
+    energy_w: [40, 120]        # area light power in Blender units (world_scale 10); tune with tool 06 compare
+    colour_temperature_k: [5000, 6500]
+    fill_world_strength: [0.0, 0.05]
+  wear: {scratches: 0.3, grime: 0.2, fingerprints: 0.1}   # probability per instance
+  materials: {}                # override/extend presets, e.g. zinc_clear: {roughness: [0.1, 0.3]}
 
 # 06 postprocess — camera and sensor simulation
 postprocess: {}

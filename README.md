@@ -22,7 +22,7 @@ Project conventions are in [CLAUDE.md](CLAUDE.md). The build guide, with one pro
 | 02 | partgen     | parametric mesh generator: render mesh, collision proxy, keypoints, `part.json` | done |
 | 03 | calibration | Pi capture scripts, ChArUco board, intrinsics, extrinsics, sensor profile | done |
 | 04 | restposes   | stable resting poses of each part (precomputed once) | done |
-| 05 | scenegen    | BlenderProc scene generation and rendering (RGB + instance mask + `meta.json`) | TODO |
+| 05 | scenegen    | BlenderProc scene generation and rendering (RGB + instance mask + `meta.json`) | implemented (Blender run pending) |
 | 06 | postprocess | lens distortion (RGB and mask), noise, vignetting, compression | TODO |
 | 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays | TODO |
 | 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation | TODO |
