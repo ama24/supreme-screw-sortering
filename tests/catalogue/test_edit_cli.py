@@ -3,8 +3,8 @@ import difflib
 import shutil
 
 import pytest
-from conftest import MINIMAL, SHIPPED
 
+from conftest import MINIMAL, SHIPPED
 from screwsynth.catalogue import edit
 from screwsynth.catalogue.classes import build_classes, classes_up_to_date
 from screwsynth.catalogue.cli import main

@@ -12,6 +12,10 @@ labelled automatically from the render ground truth, and used to train a two-sta
 2. **Stage 2:** measurement on full-resolution crops. Keypoints and sub-pixel edges are parallax-corrected and
    snapped to the nearest standard length.
 
+**Quick start:** after installing (below), run `screwsynth-gui`. Choose the camera, parts and dataset size, press
+**Run**, and the whole dataset is built: parts, rest poses, renders, post-processing and labels. See
+[Build a dataset](#build-a-dataset).
+
 Project conventions are in [CLAUDE.md](CLAUDE.md). The build guide, with one prompt per tool, is in [docs/prompts/](docs/prompts/).
 
 ## Pipeline
@@ -27,6 +31,7 @@ Project conventions are in [CLAUDE.md](CLAUDE.md). The build guide, with one pro
 | 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays | done |
 | 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation | TODO |
 | 09 | realdata    | capture and label a real validation set, compare real vs synthetic | TODO |
+| –  | pipeline    | dataset builder: recipes, one-command runner (`screwsynth-dataset`), browser GUI (`screwsynth-gui`) | done |
 
 Each tool has code in `src/screwsynth/<tool>/` and docs in `tools/<tool>/README.md`.
 
@@ -71,14 +76,35 @@ python -m pip install --upgrade pip
 Activate the environment (`.venv\Scripts\Activate.ps1` or `source .venv/bin/activate`) in every new terminal
 before using the tools.
 
-### 3. Install the package (tools 01–07)
+### 3. Install the package (tools 01–07 and the GUI)
 
 ```bash
 pip install -e ".[all]"
 ```
 
 This installs the `screwsynth` package in editable mode, all the `screwsynth-*` commands, and every dependency
-except training. You can also install only the groups you need:
+except training.
+
+To get **exactly** the package versions this project was tested with, install from the lock file
+instead:
+
+```bash
+pip install -r requirements.lock.txt
+pip install -e . --no-deps
+```
+
+`requirements.lock.txt` lists the exact version of every package (pinned versions). The ranges in
+`pyproject.toml` only say which versions should work. Regenerate the lock file after deliberately upgrading
+a package:
+
+```bash
+python -m pip freeze --exclude-editable > requirements.lock.txt
+```
+
+Keep the comment header at the top of the file. Every run also writes `output/<dataset>/environment.txt`, which
+records the git commit and the package versions used for that dataset.
+
+You can also install only the groups you need:
 
 | Group | Installs | For tools |
 |-------|----------|-----------|
@@ -86,12 +112,14 @@ except training. You can also install only the groups you need:
 | `partgen` | numpy, trimesh, manifold3d, Pillow, networkx, scipy | 02, 04 |
 | `calib` | opencv-contrib-python, matplotlib, Pillow | 03, 06, 07, 09 |
 | `train` | ultralytics (+ PyTorch, see step 5) | 08 |
+| `gui` | NiceGUI, ruamel.yaml, Pillow | dataset builder GUI |
 | `dev` | pytest, ruff, pre-commit | tests, linting |
-| `all` | catalogue + partgen + calib + dev | everything except training |
+| `all` | catalogue + partgen + calib + gui + dev | everything except training |
 
-Install **only one** OpenCV package. If `opencv-python` was installed earlier, remove it with
-`pip uninstall opencv-python opencv-python-headless`, then reinstall `opencv-contrib-python`. ChArUco needs the
-contrib build.
+**OpenCV:** the calibration needs the *contrib* build (`opencv-contrib-python`) for ChArUco. Ultralytics (tool 08)
+pulls in plain `opencv-python`. Both packages install the same `cv2` files, so keep them at the **same version**;
+the lock file does this. To check, run `python -c "import cv2; print(cv2.aruco.CharucoDetector)"`. If that fails,
+run `pip install --force-reinstall --no-deps opencv-contrib-python==<version of opencv-python>`.
 
 ### 4. BlenderProc and Blender (tool 05: rendering)
 
@@ -155,13 +183,15 @@ The Pi only needs the scripts in `tools/calibration/pi/`. Copy the captures to t
 ```bash
 pytest -m "not slow"                  # all unit tests (a few are skipped without optional packages)
 screwsynth-catalogue validate         # 0 errors
-screwsynth-partgen build --id DIN912_M4x16
+screwsynth-dataset run preview        # the whole pipeline on 10 quick scenes (about 1-2 minutes)
 ```
 
 Commands installed by the package:
 
 | Command | Tool |
 |---|---|
+| `screwsynth-gui` | dataset builder in the browser (recipes, every setting, Run, live log and previews) |
+| `screwsynth-dataset` | the same from the terminal: `run`, `plan`, `new`, `list` |
 | `screwsynth-catalogue` | 01: parts, validation, classes.yaml |
 | `screwsynth-partgen` | 02: meshes, collision proxies, keypoints |
 | `screwsynth-calib` | 03: board, intrinsics, extrinsic, sensor, validate, recheck, report |
@@ -178,9 +208,60 @@ Commands installed by the package:
   to a single process automatically.
 - **`screwsynth-...` is not recognised.** The virtual environment isn't active. Activate it, or reinstall with
   `pip install -e ".[all]"`.
-- **`cv2.aruco` has no `CharucoDetector`.** The wrong OpenCV package is installed (see step 3).
+- **`cv2.aruco` has no `CharucoDetector`.** `opencv-python` overwrote the contrib build (see the OpenCV note in
+  step 3).
 - **BlenderProc says the script "can only be run by blenderproc run".** Start render scripts with
   `blenderproc run ...`, not `python ...`.
+
+## Build a dataset
+
+A dataset is described by a **recipe**, a small file `recipes/<name>.yaml`. It records:
+- the camera (nominal Pi Camera 3, or your calibration);
+- how many scenes to render and at what quality;
+- which parts (families and sizes) are included;
+- the export formats;
+- any setting that differs from `configs/config.yaml`.
+
+`configs/config.yaml` stays the default for every dataset. A recipe stores only its differences.
+
+**With the GUI:**
+
+```bash
+screwsynth-gui            # opens http://localhost:8080 in your browser
+```
+
+- **Dataset tab:** name, number of scenes, preview quality, seed, objects per scene, export formats.
+- **Camera tab:** nominal Pi Camera 3 values, or the calibration from tool 03 (with its status).
+- **Parts tab:** tick families and sizes, set how often each finish appears, and see the number of classes and
+  parts.
+- **All settings tab:** every setting of every tool, generated from `configs/config.yaml`. Hover a name for its
+  explanation. Changed values are shown in bold, and the reset button returns to the default.
+- **Run tab:** pick the steps, then press Run. It shows checks (memory, BlenderProc, calibration), progress per
+  step, the live log, and previews of the parts, rest poses, latest render, post-processing and labels.
+
+**From the terminal:** this runs exactly the same steps as the GUI.
+
+```bash
+screwsynth-dataset new my_dataset --from dataset_v1   # create a recipe (or copy one)
+screwsynth-dataset plan my_dataset                    # list every command a run would execute
+screwsynth-dataset run my_dataset                     # build it
+screwsynth-dataset run my_dataset --steps render,postprocess,labels
+screwsynth-dataset run my_dataset --fresh             # delete its renders and labels first
+screwsynth-dataset list                               # recipes and the state of their last run
+```
+
+A run writes:
+- `output/<name>/`: `config.yaml` (the exact merged settings), renders, `pipeline.log`, `pipeline_status.json`,
+  `environment.txt`;
+- `datasets/<name>/`: the exported dataset.
+
+Built parts, rest poses and rendered scenes are reused, so a stopped run continues where it stopped. Two recipes
+are included:
+- `preview`: 10 quick scenes, to check that everything works;
+- `dataset_v1`: 3000 full-quality scenes.
+
+Calibration (tool 03) stays a separate step on the rig. Once `data/calibration/calibration.json` exists, choose
+"My calibrated camera" in the Camera tab.
 
 ## Development
 
@@ -193,7 +274,8 @@ pre-commit install
 
 ## Order of operations
 
-The tools run in this order. Calibration (03) can be done in parallel with 01, 02 and 04. Until it exists,
+The dataset builder (`screwsynth-gui` / `screwsynth-dataset`) runs steps 1, 2 and 4–7 for you. The tools run in
+this order. Calibration (03) can be done in parallel with 01, 02 and 04. Until it exists,
 `scenegen --nominal-camera` uses nominal Pi Camera 3 values.
 
 1. **catalogue**: define and validate the parts, then generate `configs/classes.yaml`.

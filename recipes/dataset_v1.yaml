@@ -1,0 +1,12 @@
+# First full dataset: every enabled part, full-resolution renders.
+# Switch `camera` to calibration once tool 03 has been run on the rig.
+name: dataset_v1
+description: First full stage-1 + stage-2 dataset (all enabled parts)
+pipeline:
+  camera: nominal
+  scenes: 3000
+  chunk: 200
+  preview: false
+  steps: [catalogue, parts, restposes, render, postprocess, labels]
+  formats: [seg, pose, coco, crops]
+config: {}

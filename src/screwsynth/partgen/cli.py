@@ -10,7 +10,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from screwsynth.catalogue.schema import Catalogue, Part, load_catalogue
+from screwsynth.catalogue.schema import Catalogue, Part, catalogue_from_config
 from screwsynth.common.config import load_config
 from screwsynth.common.log import setup_logging
 from screwsynth.common.naming import size_value
@@ -32,10 +32,7 @@ class _Ctx:
         self.assets_dir = resolve(
             args.assets_dir or self.cfg.get("paths.assets_dir", "data/assets")
         )
-        self.catalogue = load_catalogue(
-            resolve(self.cfg.get("paths.catalogue", "configs/catalogue.yaml")),
-            max_length_mm=self.cfg.get("catalogue.max_length_mm"),
-        )
+        self.catalogue = catalogue_from_config(self.cfg)
         self.settings = assets.Settings.from_config(self.cfg, getattr(args, "lod", None))
 
 
