@@ -6,3 +6,4 @@
 #   pip install -r requirements.txt
 opencv-contrib-python-headless>=4.8
 numpy
+pyserial>=3.5          # tool 09: homing/parking the printer bed before each capture

@@ -313,6 +313,25 @@ def length_accuracy(
         "by_family": _by(measured, "family", "pred"),
         "by_size": _by(measured, "size", "pred"),
         "worst": worst,
+        "errors": [
+            {
+                k: e.get(k)
+                for k in (
+                    "scene_dir",
+                    "instance_id",
+                    "true_class",
+                    "class",
+                    "family",
+                    "size",
+                    "true_mm",
+                    "pred",
+                    "pred_snapped",
+                    "method",
+                    "detected",
+                )
+            }
+            for e in errors
+        ],
     }
 
 

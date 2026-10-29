@@ -227,5 +227,11 @@ train:
     border_px: 3               # masks within this of the ROI border: cut, not measurable
     method: auto               # auto | keypoints | classical
 
-# 09 realdata — real captures and sim-to-real
-realdata: {}
+# 09 realdata — real captures and sim-to-real (sessions in paths.real_dir)
+realdata:
+  printer:                     # homing/parking the bed before each capture (Pi side, USB serial)
+    port: null                 # e.g. /dev/ttyUSB0; null = do not move the printer
+    baud: 115200
+    park_y_mm: null            # null = only home Y (G28 Y); a number also parks Y there (G0 Y...)
+    feed_mm_min: 3000
+    timeout_s: 60

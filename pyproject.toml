@@ -22,6 +22,8 @@ calib = ["opencv-contrib-python>=4.8", "matplotlib>=3.7", "pillow>=10.0"]
 train = ["ultralytics>=8.4", "onnx>=1.16", "onnxruntime>=1.18"]
 dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5", "ruamel.yaml>=0.18"]
 gui = ["nicegui>=3.0", "ruamel.yaml>=0.18", "pillow>=10.0"]
+# Raspberry Pi side of tool 09 (printer homing/parking over USB)
+pi = ["pyserial>=3.5"]
 # everything except training (PyTorch is large and needs the CUDA build, see README)
 all = ["screwsynth[catalogue,partgen,calib,gui,dev]"]
 
@@ -37,6 +39,7 @@ screwsynth-gui = "screwsynth.pipeline.cli:gui_entry"
 screwsynth-train = "screwsynth.train.cli:main"
 screwsynth-infer = "screwsynth.train.cli:infer_main"
 screwsynth-eval = "screwsynth.train.cli:eval_main"
+screwsynth-real = "screwsynth.realdata.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/screwsynth"]
