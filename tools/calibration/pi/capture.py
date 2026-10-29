@@ -101,7 +101,7 @@ def mode_intrinsics(cam: Camera, out: Path, board_json: str | None, dng: bool) -
     sharp_ref: list[float] = []
     i = len(list(out.glob("view_*.png")))
     print(
-        "Intrinsic views: move/tilt the board (max ~15 deg) to cover the WHOLE frame, corners too."
+        "Intrinsic views: move/tilt the board (max ~10 deg) to cover the WHOLE frame, corners too."
     )
     print("Press Enter to capture, q + Enter to finish. Aim for 25-40 views.")
     while input("> ").strip().lower() != "q":

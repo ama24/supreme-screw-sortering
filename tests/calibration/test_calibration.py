@@ -211,8 +211,8 @@ def test_board_pdf(tmp_path):
 
 
 def test_board_spec_measured_square():
-    s = BoardSpec().with_square(14.9)
-    assert s.square_mm == 14.9 and s.marker_mm == pytest.approx(11 * 14.9 / 15)
+    s = BoardSpec().with_square(17.9)  # measured squares of the printed 18 mm board
+    assert s.square_mm == 17.9 and s.marker_mm == pytest.approx(13.5 * 17.9 / 18)
 
 
 def test_cli_end_to_end(sample, tmp_path, capsys):
@@ -345,3 +345,15 @@ def test_pi_coverage_and_save(pi_common, tmp_path):
 def test_intrinsic_views_cover_tilts():
     tilts = [math.degrees(math.acos(abs(T[2, 2]))) for T in intrinsic_views(14)]
     assert max(tilts) <= 22
+
+
+def test_board_page_layout():
+    from screwsynth.calibration.board import BoardSpec, page_layout
+
+    big = BoardSpec(11, 8, 18.0, 13.5, "DICT_5X5_100")  # the shipped board: A4 landscape
+    (pw, ph), (x, y) = page_layout(big)
+    assert (pw, ph) == (297.0, 210.0) and x == pytest.approx((297 - 198) / 2)
+    small = BoardSpec(7, 5, 15.0, 11.0, "DICT_5X5_100")  # taller than wide fits portrait
+    assert page_layout(small)[0] == (210.0, 297.0)
+    with pytest.raises(ValueError):
+        page_layout(BoardSpec(14, 10, 20.0, 15.0, "DICT_5X5_100"))  # 280 x 200 mm: too big for A4

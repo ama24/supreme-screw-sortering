@@ -48,11 +48,11 @@ partgen:
 
 # 03 calibration — Pi Camera 3 intrinsics, extrinsics, sensor profile
 calibration:
-  board:
-    squares_x: 9
-    squares_y: 7
-    square_mm: 15.0          # nominal; the solver takes the MEASURED size via --square-mm
-    marker_mm: 11.0
+  board:                       # 198 x 144 mm: A4 landscape, and lies flat inside the 220 mm plate
+    squares_x: 11
+    squares_y: 8
+    square_mm: 18.0          # nominal; the solver takes the MEASURED size via --square-mm
+    marker_mm: 13.5
     dictionary: DICT_5X5_100
   target_rms_px: 0.5          # warn above this intrinsic reprojection RMS
   min_corners: 12             # reject views with fewer ChArUco corners

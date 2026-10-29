@@ -102,12 +102,14 @@ def intrinsic_views(n: int = 14, seed: int = 0) -> list[np.ndarray]:
     return poses
 
 
-def make_sample(out_dir: str | os.PathLike[str], seed: int = 0) -> dict:
+def make_sample(
+    out_dir: str | os.PathLike[str], seed: int = 0, spec: BoardSpec | None = None
+) -> dict:
     """Write a tiny synthetic capture set with ground truth (intrinsics, extrinsic, sensor)."""
     out = Path(out_dir)
     rng = np.random.default_rng(seed)
     cam = small_camera()
-    spec = BoardSpec()
+    spec = spec or BoardSpec()
     (out / "intrinsics").mkdir(parents=True, exist_ok=True)
     for i, T in enumerate(intrinsic_views(14, seed)):
         cv2.imwrite(str(out / "intrinsics" / f"view_{i:02d}.png"), render_board(cam, spec, T, rng))
