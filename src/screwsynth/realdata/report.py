@@ -100,7 +100,7 @@ def suggestions(
             )
     if src.get("missed", 0):
         out.append(
-            f"{src['missed']} labelled screws were not detected: lower train.infer.conf or add similar layouts"
+            f"{src['missed']} labelled screws were not detected: lower measure.infer.conf or add similar layouts"
         )
     if src.get("wrong_class", 0):
         out.append(
@@ -116,7 +116,7 @@ def markdown(
     sugg: Sequence[str],
     html: Path | None,
 ) -> str:
-    from screwsynth.train.evaluate import evaluation_markdown
+    from screwsynth.measure.evaluate import evaluation_markdown
 
     lines = [
         evaluation_markdown(evaluation.get("name", "real"), evaluation, synthetic),

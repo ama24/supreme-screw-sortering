@@ -47,8 +47,8 @@ class per session. That keeps the matching (step 6) automatic.
 ### 3. Capture on the Pi
 
 ```bash
-# on the Pi, in the repo with the package installed (pip install -e ".[calib,pi]")
-screwsynth-real capture --session s01 --settings tools/calibration/pi/camera_settings.json --recheck
+# on the Pi, with both packages installed (pip install -r rig/requirements-pi.txt, see rig/README.md)
+screwrig capture --session s01 --settings camera_settings.json --recheck
 ```
 
 1. **Recheck** (`--recheck`): lay the ChArUco board flat on the plate first. The pose is rechecked with tool 03,
@@ -61,7 +61,7 @@ screwsynth-real capture --session s01 --settings tools/calibration/pi/camera_set
      note (e.g. "after removing the M5 nut").
 3. **Workflow:** take a photo, remove a part, take a photo, and so on, as the machine will do.
 
-**Printer settings** (`realdata.printer` in the config):
+**Printer settings** (`rig.printer` in the config):
 - the serial port (e.g. `/dev/ttyUSB0`), the baud rate, and an optional `park_y_mm`;
 - **only** `G28 Y`, `G0 Y<park_y_mm>` and `M400` are ever sent. Any other command is refused before it is written.
 
@@ -162,7 +162,7 @@ This writes `datasets/val_real/sim_to_real/sim_to_real.md` (and `.json`):
 3. **Top error sources:** the lowest-mAP classes, and the length exact rate by size, family, **finish** (from the
    inventory) and session.
 4. **Suggested changes:** for example "zinc_clear parts often wrong: check that finish's material", "large mAP gap:
-   fix realism, then fine-tune", "N screws missed: lower train.infer.conf".
+   fix realism, then fine-tune", "N screws missed: lower measure.infer.conf".
 
 ## Tests
 

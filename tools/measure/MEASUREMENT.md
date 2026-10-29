@@ -1,6 +1,6 @@
 # Measurement methods: A (keypoints) vs B (classical) on synthetic data
 
-`screwsynth-train compare-measure` was run on the **true masks** of rendered scenes, so detection errors do not mix in.
+`screwsynth-compare-measure` was run on the **true masks** of rendered scenes, so detection errors do not mix in.
 
 **Setup:**
 - 8 scenes, nominal camera, rendered at full resolution (2560 × 2560 ROI, about 11.7 px/mm), 32 samples;
@@ -40,7 +40,7 @@ B by size:
   `stage2_pose` on a dataset exported with `crops`, then run:
 
   ```bash
-  screwsynth-train compare-measure --dataset datasets/<name> --stage2 runs/pose/stage2_pose/weights/best.pt
+  screwsynth-compare-measure --dataset datasets/<name> --stage2 runs/pose/stage2_pose/weights/best.pt
   ```
 
   If A reaches roughly 1 px, it will be several times more accurate than B. `--method auto` uses A whenever its

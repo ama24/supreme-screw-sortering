@@ -221,9 +221,12 @@ labels:
   min_instances_per_class: 3000
   val_real: null               # e.g. ../../real/val_real/images/val  (written as val_real in the yaml)
 
-# 08 train — stage 1, stage 2, measurement (experiments: configs/train/*.yaml)
+# 08 train — stage 1 and stage 2 training (experiments: configs/train/*.yaml)
 train:
-  runs_dir: runs               # training runs: runs/<stage>/<experiment>
+  runs_dir: runs               # training runs: runs/<stage>/<experiment> (generic training moves to model-trainer)
+
+# 08 measure — the trained models in use: detect, classify and measure (screwsynth-infer / -eval, the Pi)
+measure:
   stage1_weights: null         # default for screwsynth-infer, e.g. runs/seg/stage1_nano/weights/best.pt
   stage2_weights: null         # keypoint model; null = classical measurement only
   infer:
@@ -234,8 +237,8 @@ train:
     border_px: 3               # masks within this of the ROI border: cut, not measurable
     method: auto               # auto | keypoints | classical
 
-# 09 realdata — real captures and sim-to-real (sessions in paths.real_dir)
-realdata:
+# rig — the Raspberry Pi side (screwrig package: camera, printer bed, capture sessions)
+rig:
   printer:                     # homing/parking the bed before each capture (Pi side, USB serial)
     port: null                 # e.g. /dev/ttyUSB0; null = do not move the printer
     baud: 115200

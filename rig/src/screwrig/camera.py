@@ -1,6 +1,6 @@
-"""Helpers shared by the Raspberry Pi capture scripts (no Picamera2 import here, so it is testable).
+"""The Pi Camera 3 with locked settings, and helpers to check and save its frames.
 
-Copy this folder to the Pi; it does not need the screwsynth package.
+Picamera2 is only imported when a Camera is opened, so everything else here is testable on the PC.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Any
 
 import numpy as np
 
-log = logging.getLogger("pi")
+log = logging.getLogger("screwrig.camera")
 
 FULL_RES = (4608, 2592)
 # tolerances when checking that the camera really runs with the locked settings
@@ -149,3 +149,53 @@ def _jsonable(v: Any) -> Any:
     if hasattr(v, "tolist"):
         return v.tolist()
     return str(v)
+
+
+class Camera:
+    def __init__(self, settings: dict) -> None:
+        from picamera2 import Picamera2
+
+        self.settings = settings
+        self.picam2 = Picamera2()
+        mode = settings.get("sensor_mode") or {}
+        cfg = self.picam2.create_still_configuration(
+            main={"size": tuple(settings.get("size", FULL_RES)), "format": "RGB888"},
+            raw={} if mode else None,
+            sensor={"output_size": tuple(mode["size"]), "bit_depth": mode["bit_depth"]}
+            if mode
+            else {},
+            buffer_count=2,
+        )
+        self.picam2.configure(cfg)
+        self.picam2.set_controls(controls_from_settings(settings))
+        self.picam2.start()
+        time.sleep(1.5)
+        self.verify()
+
+    def verify(self) -> None:
+        md = dict(self.picam2.capture_metadata())
+        md["size"] = list(self.settings.get("size", FULL_RES))
+        problems = settings_mismatch(self.settings, md)
+        if problems:
+            self.picam2.stop()
+            raise SystemExit(
+                "REFUSING TO CAPTURE: camera does not run with the locked settings:\n  "
+                + "\n  ".join(problems)
+            )
+
+    def grab(self, dng_path: Path | None = None) -> tuple[np.ndarray, dict]:
+        request = self.picam2.capture_request()
+        try:
+            img = request.make_array("main")
+            md = request.get_metadata()
+            if dng_path is not None:
+                request.save_dng(str(dng_path))
+        finally:
+            request.release()
+        problems = settings_mismatch(self.settings, md)
+        if problems:
+            raise SystemExit("settings drifted during capture: " + "; ".join(problems))
+        return img, md
+
+    def close(self) -> None:
+        self.picam2.stop()

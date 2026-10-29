@@ -1,4 +1,4 @@
-"""screwsynth-real: capture, label and manage the real dataset (tool 09)."""
+"""screwsynth-real: sessions, labelling and the real dataset (tool 09). Capturing runs on the Pi: screwrig capture."""
 
 from __future__ import annotations
 
@@ -6,13 +6,12 @@ import argparse
 import logging
 import sys
 from collections.abc import Sequence
-from datetime import datetime
 from pathlib import Path
 
 from screwsynth.common.config import load_config
 from screwsynth.common.io import read_json, read_yaml, write_json
 from screwsynth.common.log import setup_logging
-from screwsynth.common.paths import repo_root, resolve
+from screwsynth.common.paths import resolve
 
 from . import cvat, matching
 from .session import (
@@ -81,77 +80,6 @@ def cmd_inventory_template(ctx: _Ctx, args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_capture(ctx: _Ctx, args: argparse.Namespace) -> int:
-    """Pi side: home/park the bed, capture with the locked settings, save image + sidecar."""
-    pi_dir = repo_root() / "tools" / "calibration" / "pi"
-    sys.path.insert(0, str(pi_dir))
-    from capture import Camera  # type: ignore[import-not-found]  # noqa: E402
-    from pi_common import save_capture  # type: ignore[import-not-found]  # noqa: E402
-
-    from .printer import Printer, PrinterSettings
-
-    d = ctx.session(args.session)
-    meta = read_json(d / "session.json")
-    settings_path = resolve(args.settings)
-    settings = read_json(settings_path)
-    printer = None
-    pst = PrinterSettings.from_config(dict(ctx.cfg.get("realdata.printer", {}) or {}))
-    if pst.port and not args.no_printer:
-        printer = Printer(pst)
-    cam = Camera(settings)  # refuses to run when the locked settings cannot be applied
-    try:
-        if args.recheck:
-            input("Recheck: lay the calibration board flat on the plate, then press Enter > ")
-            if printer:
-                printer.home_and_park()
-            img, md = cam.grab()
-            path = save_capture(d, "recheck", img, md, {"session": meta["id"]})
-            from screwsynth.calibration.cli import main as calib_main
-
-            code = calib_main(["recheck", "--image", str(path)])
-            meta["recheck"] = {
-                "time": datetime.now().isoformat(timespec="seconds"),
-                "ok": code == 0,
-            }
-            write_json(d / "session.json", meta)
-            if code != 0:
-                raise SystemExit(
-                    "the camera/plate pose has drifted: recalibrate the extrinsic before capturing"
-                )
-            input("Recheck OK. Remove the board, put the parts on the plate, then press Enter > ")
-        n = len(list((d / "images").glob("img_*.png")))
-        _out(
-            "Enter = home/park the bed and take a photo; type a note before Enter to store it; q = quit"
-        )
-        while True:
-            note = input(f"img_{n + 1:04d} > ").strip()
-            if note.lower() == "q":
-                break
-            if printer:
-                printer.home_and_park()
-            img, md = cam.grab()
-            n += 1
-            save_capture(
-                d / "images",
-                f"img_{n:04d}",
-                img,
-                md,
-                {
-                    "session": meta["id"],
-                    "settings": settings,
-                    "settings_file": str(settings_path),
-                    "notes": note,
-                    "operator": meta.get("operator", ""),
-                },
-            )
-            _out(f"saved img_{n:04d}.png")
-    finally:
-        cam.close()
-        if printer:
-            printer.close()
-    return 0
-
-
 def cmd_preannotate(ctx: _Ctx, args: argparse.Namespace) -> int:
     from .build import prepare_images
     from .preannotate import preannotate
@@ -159,10 +87,10 @@ def cmd_preannotate(ctx: _Ctx, args: argparse.Namespace) -> int:
     d = ctx.session(args.session)
     calib = ctx.calibration()
     images = prepare_images(d, calib)
-    stage1 = args.stage1 or ctx.cfg.get("train.stage1_weights")
+    stage1 = args.stage1 or ctx.cfg.get("measure.stage1_weights")
     if not stage1:
-        raise SystemExit("no stage-1 weights: pass --stage1 or set train.stage1_weights")
-    stage2 = args.stage2 or ctx.cfg.get("train.stage2_weights")
+        raise SystemExit("no stage-1 weights: pass --stage1 or set measure.stage1_weights")
+    stage2 = args.stage2 or ctx.cfg.get("measure.stage2_weights")
     anns = preannotate(images, resolve(stage1), resolve(stage2) if stage2 else None, calib, ctx.cfg)
     write_json(d / "annotations" / "preannotations.json", cvat.to_json(anns))
     _out(
@@ -219,7 +147,7 @@ def _corrected(d: Path) -> list[cvat.ImageAnn]:
 
 
 def cmd_match(ctx: _Ctx, args: argparse.Namespace) -> int:
-    from screwsynth.train.geometry import Geometry
+    from screwsynth.measure.geometry import Geometry
 
     from .build import measured_lengths, roi_camera
 
@@ -287,9 +215,9 @@ def cmd_build_dataset(ctx: _Ctx, args: argparse.Namespace) -> int:
 
 
 def cmd_report(ctx: _Ctx, args: argparse.Namespace) -> int:
-    from screwsynth.train.evaluate import detection_metrics, length_accuracy
-    from screwsynth.train.geometry import Geometry
-    from screwsynth.train.infer import Pipeline, Settings
+    from screwsynth.measure.evaluate import detection_metrics, length_accuracy
+    from screwsynth.measure.geometry import Geometry
+    from screwsynth.measure.infer import Pipeline, Settings
 
     from . import report
 
@@ -353,17 +281,6 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--parts", nargs="*", help="part ids to pre-fill, e.g. DIN912_M4x16 DIN934_M4")
     s.add_argument("--overwrite", action="store_true")
     s.set_defaults(func=cmd_inventory_template)
-
-    s = sub.add_parser(
-        "capture", parents=[common], help="Pi side: home/park, capture with locked settings"
-    )
-    s.add_argument("--session", required=True)
-    s.add_argument("--settings", required=True, help="camera_settings.json from lock_settings.py")
-    s.add_argument(
-        "--recheck", action="store_true", help="check the camera/plate pose on the board first"
-    )
-    s.add_argument("--no-printer", action="store_true", help="do not home/park the bed")
-    s.set_defaults(func=cmd_capture)
 
     s = sub.add_parser(
         "preannotate", parents=[common], help="pre-annotate with the current models (tool 08)"

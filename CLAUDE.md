@@ -60,8 +60,8 @@ the tool you are working on before changing it.
 | 05 | scenegen    | BlenderProc scene generation and rendering (RGB + instance mask + meta.json) |
 | 06 | postprocess | lens distortion (RGB and mask), noise, vignetting, compression |
 | 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays |
-| 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation |
-| 09 | realdata    | capture and label a real validation set, compare real vs synthetic |
+| 08 | train, measure | train stage 1 and stage 2 (moving to model-trainer); measurement, inference, evaluation |
+| 09 | realdata    | label a real validation set, compare real vs synthetic (capture: `screwrig` on the Pi) |
 
 The dataset builder (`src/screwsynth/pipeline`, `screwsynth-dataset` / `screwsynth-gui`) runs 01, 02, 04,
 05, 06 and 07 from one recipe (`recipes/<name>.yaml`) as subprocesses. Each step is called with
@@ -101,6 +101,16 @@ Every tool reads the catalogue through `catalogue_from_config()`, so `catalogue.
 - Randomness: every random choice takes a seed; a given seed reproduces the same output.
 
 ## Layout
+- Two Python packages in this repository:
+  - **`screwsynth`** (root, `src/screwsynth`) is the PC side.
+  - **`screwrig`** (`rig/`, `rig/src/screwrig`) is the Raspberry Pi side: camera, printer bed, capture sessions,
+    later the picker. `screwrig` imports `screwsynth`, never the other way round. Install both with
+    `pip install -e . -e rig/`.
+- Measurement and inference (stage 2, used on the PC and the Pi) live in `src/screwsynth/measure`.
+- **Generic model training is moving to the separate repository
+  [model-trainer](https://github.com/ama24/model-trainer).** The two repositories exchange files only:
+  - exported datasets go to the trainer (YOLO/COCO plus `groups.csv`: image -> layout);
+  - model packages come back (weights plus `model_card.json`).
 - `configs/config.yaml` — one section per tool; load with `screwsynth.common.config.load_config()`.
 - `recipes/` — dataset recipes (pipeline settings + config overrides).
 - `requirements.lock.txt` — exact package versions; regenerate with `pip freeze --exclude-editable`

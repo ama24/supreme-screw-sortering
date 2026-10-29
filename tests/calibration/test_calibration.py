@@ -1,6 +1,4 @@
-import importlib.util
 import math
-import sys
 
 import cv2
 import numpy as np
@@ -19,7 +17,6 @@ from screwsynth.calibration.synthetic import (
     small_camera,
 )
 from screwsynth.common.io import read_json
-from screwsynth.common.paths import repo_root
 
 
 @pytest.fixture(scope="module")
@@ -280,66 +277,6 @@ def test_cli_end_to_end(sample, tmp_path, capsys):
         assert (tmp_path / f).is_file()
     pe = cv2.imread(str(tmp_path / "plate_empty.png"))
     assert pe.shape[:2] == (calib["roi"]["h"], calib["roi"]["w"])
-
-
-# ------------------------------------------------------------------------- Pi helper scripts
-
-
-@pytest.fixture(scope="module")
-def pi_common():
-    path = repo_root() / "tools" / "calibration" / "pi" / "pi_common.py"
-    spec = importlib.util.spec_from_file_location("pi_common", path)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["pi_common"] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-def test_pi_focus(pi_common):
-    rng = np.random.default_rng(0)
-    sharp = rng.integers(0, 255, (200, 300)).astype(np.uint8)
-    blurred = cv2.GaussianBlur(sharp, (0, 0), 2)
-    assert pi_common.focus_metric(sharp) > pi_common.focus_metric(blurred)
-    pos = [2.8, 2.9, 3.0, 3.1, 3.2, 3.3]
-    scores = [-((p - 3.07) ** 2) for p in pos]
-    assert pi_common.best_focus(pos, scores) == pytest.approx(3.07, abs=1e-6)
-
-
-def test_pi_settings_check(pi_common):
-    locked = {
-        "ExposureTime": 10000,
-        "AnalogueGain": 1.5,
-        "ColourGains": [2.0, 1.6],
-        "LensPosition": 3.3,
-        "size": [4608, 2592],
-    }
-    good = {
-        "ExposureTime": 10020,
-        "AnalogueGain": 1.51,
-        "ColourGains": (2.0, 1.605),
-        "LensPosition": 3.3,
-        "size": [4608, 2592],
-    }
-    assert pi_common.settings_mismatch(locked, good) == []
-    bad = dict(good, ExposureTime=12000, ColourGains=(2.3, 1.6))
-    problems = pi_common.settings_mismatch(locked, bad)
-    assert len(problems) == 2 and any("ExposureTime" in p for p in problems)
-    c = pi_common.controls_from_settings(locked)
-    assert c["AeEnable"] is False and c["AwbEnable"] is False and c["AfMode"] == 0
-
-
-def test_pi_coverage_and_save(pi_common, tmp_path):
-    cov = pi_common.Coverage((4608, 2592), (16, 9))
-    cov.add(np.array([[10.0, 10.0], [4600, 2590], [2300, 1300]]))
-    assert cov.fraction == pytest.approx(3 / 144)
-    assert cov.ascii().count("\n") == 8
-    p = pi_common.save_capture(
-        tmp_path, "x", np.zeros((4, 4, 3), np.uint8), {"ExposureTime": 1, "ColourGains": (1.0, 2.0)}
-    )
-    assert p.is_file() and read_json(p.with_suffix(".json"))["metadata"]["ColourGains"] == [
-        1.0,
-        2.0,
-    ]
 
 
 def test_intrinsic_views_cover_tilts():

@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from screwsynth.calibration.geometry import nominal_camera
-from screwsynth.train.classical import edge_keypoints, rim_corrected, to_gray
+from screwsynth.measure.classical import edge_keypoints, rim_corrected, to_gray
 
 
 def _screw_image(angle_deg=27.0, head=(14.0, 22.0), shank=(60.0, 11.0), ss=8, size=(160, 140)):

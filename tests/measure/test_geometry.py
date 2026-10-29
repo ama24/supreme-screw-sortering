@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from screwsynth.calibration.geometry import Camera, nominal_camera
-from screwsynth.train.geometry import (
+from screwsynth.measure.geometry import (
     ClassGeometry,
     Geometry,
     analytic_heights,

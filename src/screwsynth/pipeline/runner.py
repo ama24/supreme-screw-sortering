@@ -21,6 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from screwsynth.common.awake import keep_awake
 from screwsynth.common.io import write_json, write_text, write_yaml
 from screwsynth.common.paths import repo_root
 
@@ -87,6 +88,8 @@ class Runner:
         self._save()
         write_environment(plan.run_dir / "environment.txt")
         ok = True
+        awake = contextlib.ExitStack()  # Windows sleep would kill an overnight render
+        awake.enter_context(keep_awake(f"building {plan.recipe.name}"))
         try:
             for step in plan.steps:
                 if self._cancel.is_set():
@@ -107,6 +110,7 @@ class Runner:
             self._save()
             self._log_file.close()
             self._log_file = None
+            awake.close()
         return ok and not self._cancel.is_set()
 
     def _run_step(self, step: Step) -> bool:

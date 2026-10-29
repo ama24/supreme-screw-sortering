@@ -88,8 +88,8 @@ def fake_dataset(tmp_path):
 
 
 def test_compare_measurement_runs_on_a_dataset(fake_dataset):
-    from screwsynth.train.evaluate import compare_measurement, comparison_markdown
-    from screwsynth.train.geometry import Geometry
+    from screwsynth.measure.evaluate import compare_measurement, comparison_markdown
+    from screwsynth.measure.geometry import Geometry
 
     res = compare_measurement(fake_dataset, Geometry.from_config(load_config()), split="all")
     assert res["screws"] > 0
@@ -100,9 +100,9 @@ def test_compare_measurement_runs_on_a_dataset(fake_dataset):
 
 
 def test_measure_screw_on_a_true_mask(fake_dataset):
-    from screwsynth.train.evaluate import _gt_detection, _gt_mask_window, scene_from_dir
-    from screwsynth.train.geometry import Geometry
-    from screwsynth.train.infer import Settings, measure_screw, plate_pose
+    from screwsynth.measure.evaluate import _gt_detection, _gt_mask_window, scene_from_dir
+    from screwsynth.measure.geometry import Geometry
+    from screwsynth.measure.infer import Settings, measure_screw, plate_pose
 
     geo = Geometry.from_config(load_config())
     crops = (fake_dataset / "crops.csv").read_text(encoding="utf-8").splitlines()
@@ -123,9 +123,9 @@ def test_inference_end_to_end_with_dummy_model(tmp_path, fake_dataset):
     pytest.importorskip("ultralytics")
     from ultralytics import YOLO
 
-    from screwsynth.train.evaluate import scene_from_dir
-    from screwsynth.train.geometry import Geometry
-    from screwsynth.train.infer import Pipeline, Settings, draw
+    from screwsynth.measure.evaluate import scene_from_dir
+    from screwsynth.measure.geometry import Geometry
+    from screwsynth.measure.infer import Pipeline, Settings, draw
 
     model = YOLO("yolo26n-seg.yaml")
     weights = tmp_path / "dummy.pt"

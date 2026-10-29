@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
 """Lock exposure, gain, white balance and focus of the Pi Camera 3 for all future captures.
 
 Run on the Raspberry Pi with the rig frozen: lights on, shroud closed, Y homed, empty TPU plate.
-  python3 lock_settings.py --out camera_settings.json
+  screwrig lock --out camera_settings.json
 Steps: full-resolution still mode -> let AE/AWB settle -> freeze exposure/gain/colour gains ->
 manual focus sweep (variance of Laplacian on the centre) -> save camera_settings.json.
 """
@@ -16,9 +15,10 @@ import time
 from pathlib import Path
 
 import numpy as np
-from pi_common import FULL_RES, best_focus, focus_metric
 
-log = logging.getLogger("lock_settings")
+from .camera import FULL_RES, best_focus, focus_metric
+
+log = logging.getLogger("screwrig.lock")
 
 
 def _gray(picam2) -> np.ndarray:
@@ -37,18 +37,16 @@ def sweep(picam2, positions: list[float], settle_s: float) -> tuple[list[float],
     return positions, scores
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+def add_arguments(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--out", default="camera_settings.json")
     ap.add_argument("--settle", type=float, default=3.0, help="seconds for AE/AWB to settle")
     ap.add_argument(
         "--distance-mm", type=float, default=300.0, help="approx. camera-to-plate distance"
     )
     ap.add_argument("--exposure-us", type=int, help="force this exposure instead of the AE value")
-    args = ap.parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+
+
+def run(args: argparse.Namespace) -> int:
 
     from libcamera import controls
     from picamera2 import Picamera2
@@ -122,7 +120,3 @@ def main() -> int:
         args.out,
     )
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

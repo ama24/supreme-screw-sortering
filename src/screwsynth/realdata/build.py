@@ -81,7 +81,7 @@ def prepare_images(session_dir: Path, calibration: Mapping[str, Any] | None) -> 
 
 def measured_lengths(ann: ImageAnn, cam: Camera, geometry: Any) -> dict[int, float | None]:
     """Length of every screw with labelled keypoints (tool 08 measurement), for the matching."""
-    from screwsynth.train.geometry import measure_length
+    from screwsynth.measure.geometry import measure_length
 
     out: dict[int, float | None] = {}
     for o in ann.objects:

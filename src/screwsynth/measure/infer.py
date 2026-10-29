@@ -67,7 +67,7 @@ class Settings:
     @classmethod
     def from_config(cls, cfg: Mapping[str, Any]) -> Settings:
         d = cls()
-        m = dict(cfg.get("train", {}) or {}).get("infer", {}) or {}
+        m = dict(cfg.get("measure", {}) or {}).get("infer", {}) or {}
         return cls(
             stage1_imgsz=int(
                 m.get("stage1_imgsz", cfg.get("labels", {}).get("stage1_imgsz", d.stage1_imgsz))

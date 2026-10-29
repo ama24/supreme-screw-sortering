@@ -13,7 +13,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
-log = logging.getLogger("screwsynth.realdata.printer")
+log = logging.getLogger("screwrig.printer")
 
 
 class PrinterError(RuntimeError):
@@ -63,7 +63,7 @@ class Printer:
     def __init__(self, st: PrinterSettings, opener: Callable | None = None) -> None:
         self.st = st
         if not st.port:
-            raise PrinterError("no printer port configured (realdata.printer.port)")
+            raise PrinterError("no printer port configured (rig.printer.port)")
         if opener is None:
             try:
                 import serial  # pyserial

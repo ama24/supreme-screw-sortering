@@ -204,6 +204,9 @@ def _link_or_copy(src: Path, dst: Path) -> None:
         shutil.copy2(src, dst)
 
 
+GROUPS_FILE = "groups.csv"
+
+
 def _write_dataset_yaml(
     path: Path,
     root: Path,
@@ -219,7 +222,18 @@ def _write_dataset_yaml(
     lines += [f"  {i}: {n}" for i, n in sorted(names.items())]
     if pose:
         lines += ["kpt_shape: [3, 3]", f"flip_idx: {FLIP_IDX}", f"kpt_names: {list(KEYPOINTS)}"]
+    if (root / GROUPS_FILE).is_file():
+        lines.append(f"groups: {GROUPS_FILE}  # image -> layout; one group never spans two splits")
     write_text(path, "\n".join(lines) + "\n")
+
+
+def _write_groups(path: Path, groups: Sequence[tuple[str, str, str]]) -> None:
+    """image file name, split, group (the layout: every photo of one layout shares it)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        wr = csv.writer(fh)
+        wr.writerow(["image", "split", "group"])
+        wr.writerows(groups)
 
 
 def export(
@@ -264,6 +278,7 @@ def export(
         "dropped": 0,
     }
     dropped_all, sources, crop_rows = [], [], []
+    groups: list[tuple[str, str, str]] = []
     ann_id = 1
     for img_id, (d, meta) in enumerate(
         sorted(metas.items(), key=lambda kv: kv[1]["scene_id"]), start=1
@@ -286,6 +301,7 @@ def export(
         cv2.imwrite(
             str(img_path), small, [cv2.IMWRITE_JPEG_QUALITY, 95] if st.image_format == "jpg" else []
         )
+        groups.append((img_path.name, split, str(meta.get("layout_id", meta["scene_id"]))))
         sources.append(
             {
                 "image": f"{split}/{img_path.name}",
@@ -403,6 +419,8 @@ def export(
     stats["dropped"] = len(dropped_all)
     # dataset files
     real = st.val_real
+    for f in [*yolo_fmts, *(["coco"] if "coco" in formats else [])]:
+        _write_groups(out / f / GROUPS_FILE, groups)
     for f in yolo_fmts:
         _write_dataset_yaml(out / f"{f}.yaml", out / f, names, f == "pose", real)
         if real:

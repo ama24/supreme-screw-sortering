@@ -94,6 +94,12 @@ def test_export_all_formats(tmp_path):
         for p in (ds / "seg" / "images" / split).iterdir():
             layout = p.stem.split("_")[1]
             assert split_of.setdefault(layout, split) == split
+    # groups.csv tells a trainer which images belong together (for leakage checks and re-splits)
+    groups = list(csv.DictReader((ds / "seg" / "groups.csv").open(encoding="utf-8")))
+    assert len(groups) == 20 and (ds / "coco" / "groups.csv").is_file()
+    assert all(split_of[g["image"].split("_")[1]] == g["split"] for g in groups)
+    assert len({g["group"] for g in groups}) == 10
+    assert "groups: groups.csv" in (ds / "seg.yaml").read_text(encoding="utf-8")
     for f in ("seg", "det", "obb", "pose"):
         assert (ds / f"{f}.yaml").is_file()
         img = next((ds / f / "images" / "train").iterdir())

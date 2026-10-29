@@ -4,7 +4,8 @@ This tool calibrates the real Raspberry Pi Camera Module 3 so that the Blender c
 It also measures the sensor and lighting characteristics that tool 06 uses to make renders look like real
 captures. It has two halves:
 
-- **Pi side** (`tools/calibration/pi/`): capture scripts using Picamera2, run on the Raspberry Pi.
+- **Pi side** (the `screwrig` package in [rig/](../../rig/)): `screwrig lock` and `screwrig calib-capture`, using
+  Picamera2 on the Raspberry Pi.
 - **PC side** (`screwsynth-calib`): solvers using OpenCV ≥ 4.7 ChArUco, run on the PC (or on the Pi).
 
 - **Outputs:** `data/calibration/` contains:
@@ -25,8 +26,7 @@ calibrated yet; follow the procedure below.
   ```bash
   sudo apt install -y python3-picamera2 python3-numpy
   python3 -m venv --system-site-packages ~/screwcam && source ~/screwcam/bin/activate
-  pip install -r tools/calibration/pi/requirements.txt     # OpenCV contrib (headless)
-  scp -r tools/calibration/pi pi@<pi-host>:~/calib/          # from the PC, or git clone on the Pi
+  pip install -r rig/requirements-pi.txt                  # screwsynth + screwrig + OpenCV (headless)
   ```
 
 ## Step-by-step procedure
@@ -40,7 +40,7 @@ Run every `python3 ... .py` command on the Pi (in `~/calib`) and every `screwsyn
 2. **Lock the camera settings** (Pi), with the empty plate under the camera:
 
    ```bash
-   python3 lock_settings.py --out camera_settings.json --distance-mm 300
+   screwrig lock --out camera_settings.json --distance-mm 300
    ```
 
    The script:
@@ -69,7 +69,7 @@ Run every `python3 ... .py` command on the Pi (in `~/calib`) and every `screwsyn
 4. **Capture 25–40 intrinsic views** (Pi):
 
    ```bash
-   python3 capture.py --settings camera_settings.json --out captures/intrinsics --mode intrinsics --board board.json
+   screwrig calib-capture --settings camera_settings.json --out captures/intrinsics --mode intrinsics --board board.json
    ```
 
    Press Enter for each view and `q` to finish. After each view the script prints the live coverage map of where
@@ -92,7 +92,7 @@ Run every `python3 ... .py` command on the Pi (in `~/calib`) and every `screwsyn
 6. **Extrinsic: the plate frame.** Lay the board flat on the TPU plate with Y homed, then capture (Pi) and solve (PC):
 
    ```bash
-   python3 capture.py --settings camera_settings.json --out captures/extrinsic --mode extrinsic
+   screwrig calib-capture --settings camera_settings.json --out captures/extrinsic --mode extrinsic
    screwsynth-calib extrinsic --image data/real/calib/extrinsic/board_flat.png --square-mm 17.96 \
        --board-thickness-mm 4.1 --area-origin X Y --area-size 220 220
    ```
@@ -123,7 +123,7 @@ Run every `python3 ... .py` command on the Pi (in `~/calib`) and every `screwsyn
 8. **Sensor profile.** Capture (Pi), then solve (PC):
 
    ```bash
-   python3 capture.py --settings camera_settings.json --out captures/sensor --mode sensor --frames 20
+   screwrig calib-capture --settings camera_settings.json --out captures/sensor --mode sensor --frames 20
    screwsynth-calib sensor --frames "data/real/calib/sensor/frame_*.png" \
        --white data/real/calib/sensor/white.png --empty data/real/calib/sensor/empty.png
    screwsynth-calib report --extrinsic-image data/real/calib/extrinsic/board_flat.png

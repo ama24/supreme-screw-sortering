@@ -8,13 +8,6 @@ from screwsynth.common.io import read_json, read_yaml, write_json, write_yaml
 from screwsynth.common.paths import repo_root
 from screwsynth.realdata import cli, cvat, matching
 from screwsynth.realdata.build import roi_camera
-from screwsynth.realdata.printer import (
-    Printer,
-    PrinterError,
-    PrinterSettings,
-    allowed,
-    park_commands,
-)
 from screwsynth.realdata.session import (
     InventoryRow,
     SessionError,
@@ -70,45 +63,6 @@ def test_inventory_errors(tmp_path, bad):
     _write_inventory(p, [bad])
     with pytest.raises(SessionError):
         read_inventory(p, ["black_oxide"])
-
-
-# -------------------------------------------------------------------------------- printer
-
-
-class FakeSerial:
-    def __init__(self, port, baud, timeout=1):
-        self.sent = []
-        self.replies = []
-
-    def write(self, data):
-        self.sent.append(data.decode())
-        self.replies.append(b"ok\n")
-
-    def readline(self):
-        return self.replies.pop(0) if self.replies else b""
-
-    def close(self):
-        pass
-
-
-def test_printer_only_homes_and_parks():
-    st = PrinterSettings(port="COM9", park_y_mm=200, feed_mm_min=3000, timeout_s=2)
-    assert allowed("G28 Y", st) and allowed("g0 y200 f3000", st) and allowed("M400", st)
-    for bad in ("G28", "G28 X", "G0 Y150 F3000", "G1 X10", "M104 S200", "G0 Z5"):
-        assert not allowed(bad, st), bad
-    assert not allowed("G0 Y200 F3000", PrinterSettings(port="x"))  # park only when configured
-    pr = Printer(st, opener=FakeSerial)
-    pr.home_and_park()
-    assert (
-        pr.ser.sent
-        == [c + "\n" for c in park_commands(st)]
-        == ["G28 Y\n", "M400\n", "G0 Y200 F3000\n", "M400\n"]
-    )
-    with pytest.raises(PrinterError):
-        pr.send("G1 X50")
-    assert "G1 X50\n" not in pr.ser.sent  # refused before anything is written
-    with pytest.raises(PrinterError):
-        Printer(PrinterSettings(port=None), opener=FakeSerial)
 
 
 # ----------------------------------------------------------------------------------- CVAT
