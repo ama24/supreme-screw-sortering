@@ -24,6 +24,7 @@ from screwsynth.common.config import config_path
 from screwsynth.common.paths import resolve
 
 from . import parts as parts_mod
+from .background_tab import background_tab
 from .forms import Field, build_fields, coerce, config_comments, to_yaml_text
 from .recipe import (
     LABEL_FORMATS,
@@ -380,6 +381,7 @@ class BuilderPage:
         with ui.tabs().classes("w-full") as tabs:
             t_data = ui.tab("Dataset", icon="dataset")
             t_cam = ui.tab("Camera", icon="photo_camera")
+            t_bg = ui.tab("Background", icon="texture")
             t_parts = ui.tab("Parts", icon="category")
             t_set = ui.tab("All settings", icon="tune")
             t_run = ui.tab("Run", icon="play_arrow")
@@ -387,6 +389,7 @@ class BuilderPage:
         first = {
             "dataset": t_data,
             "camera": t_cam,
+            "background": t_bg,
             "parts": t_parts,
             "settings": t_set,
             "run": t_run,
@@ -396,6 +399,8 @@ class BuilderPage:
                 self.dataset_tab()
             with ui.tab_panel(t_cam):
                 self.camera_tab()
+            with ui.tab_panel(t_bg):
+                background_tab(self)
             with ui.tab_panel(t_parts):
                 self.parts_tab()
             with ui.tab_panel(t_set):

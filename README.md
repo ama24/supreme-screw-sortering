@@ -236,6 +236,12 @@ screwsynth-gui            # opens http://localhost:8080 in your browser
 
 - **Dataset tab:** name, number of scenes, preview quality, seed, objects per scene, export formats.
 - **Camera tab:** nominal Pi Camera 3 values, or the calibration from tool 03 (with its status).
+- **Background tab:** what the surface under the parts looks like:
+  - your calibrated plate photo;
+  - your own surface photos (craft mat, bare table: upload them, then scale them by typing the real width or by
+    clicking two ruler marks);
+  - solid colours (add or remove them; the default is silicone repair-mat blue);
+  - and how often each is used.
 - **Parts tab:** tick families and sizes, set how often each finish appears, and see the number of classes and
   parts.
 - **All settings tab:** every setting of every tool, generated from `configs/config.yaml`. Hover a name for its
