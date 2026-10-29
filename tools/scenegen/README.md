@@ -238,7 +238,8 @@ Record the results here; they could not be measured on the development PC:
 
 | samples | denoiser | scale | s/scene | notes |
 |---|---|---|---|---|
-| – | – | – | – | run the benchmark |
+| 32 | OPTIX | 1.0 | ~23 | 2560 × 2560, 30–40 parts, while another render shared the GPU (development PC, Oct 2026) |
+| 16 | OPTIX | 0.25 (preview) | ~3–4 per photo | clumped 70–90 parts |
 
 Rough guide:
 - Samples and resolution drive the time almost linearly.
