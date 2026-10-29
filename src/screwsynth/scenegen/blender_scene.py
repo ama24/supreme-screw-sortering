@@ -17,6 +17,7 @@ import bpy
 import numpy as np
 from blenderproc.python.utility.BlenderUtility import get_all_blender_mesh_objects
 
+from . import backgrounds as bg
 from .camera import RenderCamera
 
 log = logging.getLogger(__name__)
@@ -223,7 +224,12 @@ class StaticScene:
     """Plate (with the real empty-plate texture), bed, collider, dark shroud and the light panel."""
 
     def __init__(
-        self, cam: RenderCamera, cfg: Mapping[str, Any], calib_dir: Path, world_scale: float
+        self,
+        cam: RenderCamera,
+        cfg: Mapping[str, Any],
+        calib_dir: Path,
+        world_scale: float,
+        plate_dir: Path | None = None,
     ) -> None:
         self.cfg, self.cam, self.ws = cfg, cam, world_scale
         self.s = 0.001 * world_scale
@@ -235,6 +241,14 @@ class StaticScene:
         tex_path = Path(calib_dir) / "plate_empty.png"
         if cam.source == "calibration" and tex_path.is_file():
             self.texture = bpy.data.images.load(str(tex_path))
+        # surface photos (craft mat, table...) from the plate dir, laid at true scale per scene
+        self.plate_dir = Path(plate_dir) if plate_dir is not None else None
+        self.images = (
+            bg.usable_images(self.plate_dir, bg.load_library(self.plate_dir))
+            if self.plate_dir
+            else []
+        )
+        self._bg_cache: dict[str, str] = {}  # file -> name of the loaded bpy image
         plate_mat = self._plate_material()
         self.plate_mat_name = plate_mat.name
         self.plate.blender_obj.data.materials.append(plate_mat)
@@ -332,19 +346,38 @@ class StaticScene:
         bsdf.name = "plate_bsdf"
         rgb = nt.nodes.new("ShaderNodeRGB")
         rgb.name = "plate_rgb"
+        coord = nt.nodes.new("ShaderNodeTexCoord")
+        # surface photo in plate millimetres: rotate first, then scale to the photo's real size
+        # (one Mapping node scales before rotating, which would skew non-square photos)
+        rot = nt.nodes.new("ShaderNodeMapping")
+        rot.name = "plate_bg_rot"
+        scale = nt.nodes.new("ShaderNodeMapping")
+        scale.name = "plate_bg_scale"
+        nt.links.new(coord.outputs["Object"], rot.inputs["Vector"])
+        nt.links.new(rot.outputs["Vector"], scale.inputs["Vector"])
+        photo = nt.nodes.new("ShaderNodeTexImage")
+        photo.name = "plate_bg"
+        photo.interpolation = "Cubic"
+        photo.extension = "MIRROR"  # tiles without seams when the photo is smaller than the plate
+        nt.links.new(scale.outputs["Vector"], photo.inputs["Vector"])
+        # calibrated empty-plate photo (camera-projected UVs), or the solid colour without one
         if self.texture is not None:
             img = nt.nodes.new("ShaderNodeTexImage")
             img.image = self.texture
             img.interpolation = "Cubic"
-            mix, _, m_a, m_b, m_out = _mix_rgba(nt)
-            mix.name = "plate_mix"
-            nt.links.new(img.outputs["Color"], m_a)
-            nt.links.new(rgb.outputs["Color"], m_b)
-            nt.links.new(m_out, _input(bsdf, ["Base Color"]))
+            first = img.outputs["Color"]
         else:
-            nt.links.new(rgb.outputs["Color"], _input(bsdf, ["Base Color"]))
+            first = rgb.outputs["Color"]
+        mix_img, _, a1, b1, out1 = _mix_rgba(nt)
+        mix_img.name = "plate_mix_img"  # 0: calibrated photo, 1: surface photo
+        nt.links.new(first, a1)
+        nt.links.new(photo.outputs["Color"], b1)
+        mix, _, a2, b2, out2 = _mix_rgba(nt)
+        mix.name = "plate_mix"  # 1: solid colour
+        nt.links.new(out1, a2)
+        nt.links.new(rgb.outputs["Color"], b2)
+        nt.links.new(out2, _input(bsdf, ["Base Color"]))
         # print lines: fine waves along x as a bump
-        coord = nt.nodes.new("ShaderNodeTexCoord")
         wave = nt.nodes.new("ShaderNodeTexWave")
         wave.wave_type = "BANDS"
         wave.bands_direction = "X"
@@ -358,6 +391,33 @@ class StaticScene:
         nt.links.new(bump.outputs["Normal"], _input(bsdf, ["Normal"]))
         return mat
 
+    def _show_background(self, nodes: Any, background: Mapping[str, Any]) -> None:
+        """Point the plate material at one background (see scenegen.backgrounds)."""
+        kind = background["kind"]
+        _factor(nodes["plate_mix_img"]).default_value = 1.0 if kind == "images" else 0.0
+        _factor(nodes["plate_mix"]).default_value = 1.0 if kind == "colours" else 0.0
+        if kind == "colours":
+            nodes["plate_rgb"].outputs["Color"].default_value = (*background["rgb"], 1.0)
+        if kind != "images":
+            return
+        name = self._bg_cache.get(background["file"])
+        if name is None or name not in bpy.data.images:
+            img = bpy.data.images.load(
+                str(self.plate_dir / background["file"]), check_existing=True
+            )
+            name = self._bg_cache[background["file"]] = img.name
+        img = bpy.data.images[name]
+        nodes["plate_bg"].image = img
+        w_px, h_px = img.size
+        width = float(background["width_mm"]) * self.s  # Blender units
+        height = width * h_px / max(1, w_px)
+        rot = nodes["plate_bg_rot"]
+        rot.inputs["Rotation"].default_value = (0.0, 0.0, math.radians(background["rotation_deg"]))
+        scale = nodes["plate_bg_scale"]
+        scale.inputs["Scale"].default_value = (1.0 / width, 1.0 / height, 1.0)
+        ox, oy = background["offset"]
+        scale.inputs["Location"].default_value = (ox, oy, 0.0)
+
     def jitter(self, rng: random.Random) -> dict[str, Any]:
         """Randomise lights and plate for one render; returns the parameters used."""
         pc = self.cfg.get("plate", {}) or {}
@@ -367,18 +427,8 @@ class StaticScene:
         nodes = bpy.data.materials[self.plate_mat_name].node_tree.nodes
         _set(nodes["plate_bsdf"], ["Roughness"], rough)
         _set(nodes["plate_bump"], ["Strength"], bump)
-        solid = self.texture is None or rng.random() < float(
-            pc.get("solid_colour_probability", 0.1)
-        )
-        colours = pc.get("solid_colours", [[0.12, 0.35, 0.65]])
-        base = list(rng.choice(colours)) if solid else [0.5, 0.5, 0.5]
-        if solid:
-            base = [min(1.0, max(0.0, c * rng.uniform(0.85, 1.15))) for c in base]
-        nodes["plate_rgb"].outputs["Color"].default_value = (*base, 1.0)
-        mix = nodes.get("plate_mix")
-        if mix is not None:  # factor of the texture/solid colour mix
-            fac = next(s for s in mix.inputs if s.name == "Factor" and s.type == "VALUE")
-            fac.default_value = 1.0 if solid else 0.0
+        background = bg.choose(pc, self.images, self.texture is not None, rng)
+        self._show_background(nodes, background)
         size = rng.uniform(*lc.get("panel_size_mm", [250, 400]))
         height = rng.uniform(*lc.get("height_mm", [320, 380]))
         off = lc.get("offset_mm", [0, 40])
@@ -401,7 +451,8 @@ class StaticScene:
         return {
             "plate_roughness": rough,
             "plate_bump": bump,
-            "plate_solid_colour": base if solid else None,
+            "background": background,
+            "plate_solid_colour": background.get("rgb"),
             "light_size_mm": size,
             "light_height_mm": height,
             "light_xy_mm": [cx, cy],
@@ -410,6 +461,10 @@ class StaticScene:
             "world_strength": world,
             "exposure_ev": exposure,
         }
+
+
+def _factor(node) -> Any:
+    return next(s for s in node.inputs if s.name == "Factor" and s.type == "VALUE")
 
 
 def _kelvin_rgb(t: float) -> list[float]:

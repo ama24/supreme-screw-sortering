@@ -170,8 +170,15 @@ scenegen:
     roughness: [0.6, 0.9]
     bump_strength: [0.0, 0.15] # print lines
     line_pitch_mm: 0.4
-    solid_colour_probability: 0.1   # domain randomisation: solid plate colour instead of plate_empty.png
-    solid_colours: [[0.12, 0.35, 0.65], [0.15, 0.5, 0.25], [0.6, 0.15, 0.15], [0.5, 0.5, 0.5]]
+    # What the surface under the parts looks like: one source is drawn per scene by weight.
+    # Sources that are not available drop out (no calibration -> no calibrated photo; no images).
+    background_weights:
+      calibrated_photo: 0.6    # the calibrated camera's photo of the empty plate (plate_empty.png)
+      images: 0.2              # surface photos in paths.plate_dir (craft mat, table): GUI Background tab
+      colours: 0.2             # one of the solid colours below
+    colours:                   # sRGB hex (as colour pickers show it); add or remove freely
+      - {name: silicone_blue, hex: "#3A86D4"}   # silicone phone-repair mat
+    colour_jitter: 0.15        # +-15 % brightness of the solid colour per scene
   shroud:
     colour: [0.02, 0.02, 0.02]
     half_width_mm: 220

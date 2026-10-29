@@ -228,3 +228,21 @@ def test_cli_run_show_compare(tmp_path, capsys):
     assert (run / "show_000000.png").is_file()
     assert main(["compare", "--run", "r1", "--real", str(real), "--config", str(cfg)]) == 0
     assert (run / "compare.html").is_file()
+
+
+@pytest.mark.parametrize(
+    "kind,matched",
+    [("calibrated_photo", True), ("images", False), ("colours", False), (None, True)],
+)
+def test_plate_colour_match_only_on_the_real_plate(tmp_path, kind, matched):
+    """A craft mat or a solid colour keeps its own colour; only the real empty plate is matched."""
+    d = _scene(tmp_path)
+    if kind is not None:
+        meta = read_json(d / "meta.json")
+        meta["lighting"] = {"background": {"kind": kind}}
+        write_json(d / "meta.json", meta)
+    cfg = {"colour": {"probability": 1.0, "gain": [1, 1], "wb": [1, 1], "gamma": [1, 1]}}
+    sensor = SensorData(plate_rgb=[50, 100, 150])
+    params = process_scene(d, tmp_path / "out", cfg, sensor, seed=1)
+    plate_match = params["colour"]["plate_match"]
+    assert (plate_match != [1.0, 1.0, 1.0]) == matched

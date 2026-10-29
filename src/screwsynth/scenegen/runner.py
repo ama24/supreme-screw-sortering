@@ -194,6 +194,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
             ("assets_dir", "data/assets"),
             ("rest_poses_dir", "data/rest_poses"),
             ("calibration_dir", "data/calibration"),
+            ("plate_dir", "data/plate"),
             ("output_dir", "output"),
             ("classes", "configs/classes.yaml"),
             ("catalogue", "configs/catalogue.yaml"),
@@ -276,7 +277,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
     bs.init_renderer(render_cfg)
     bs.set_camera(cam, ws)
     bs.check_camera(cam, ws)
-    static = bs.StaticScene(cam, sg, paths["calibration_dir"], ws)
+    static = bs.StaticScene(cam, sg, paths["calibration_dir"], ws, paths["plate_dir"])
     library = bs.AssetLibrary(paths["assets_dir"], ws)
     parts: dict[str, Part] = {}
     physics = dict(sg.get("physics", {}) or {})

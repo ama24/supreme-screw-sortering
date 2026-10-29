@@ -115,7 +115,11 @@ def process_scene(
     if _on(cfg, "colour", rng):
         col = cfg.get("colour", {}) or {}
         base = np.ones(3)
-        if col.get("match_plate", True) and sensor.plate_rgb is not None:
+        background = (meta.get("lighting") or {}).get("background") or {}
+        on_plate = background.get("kind", "calibrated_photo") == "calibrated_photo"
+        # only scenes showing the real empty plate are pulled towards its colour; a craft mat
+        # or a solid colour must keep its own
+        if col.get("match_plate", True) and on_plate and sensor.plate_rgb is not None:
             bg = img[mask_out == 0]
             if len(bg) > 100:
                 med = np.median(bg, axis=0)
