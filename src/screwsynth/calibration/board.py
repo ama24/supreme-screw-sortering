@@ -14,10 +14,10 @@ import numpy as np
 
 @dataclass(frozen=True)
 class BoardSpec:
-    squares_x: int = 9
-    squares_y: int = 7
-    square_mm: float = 15.0
-    marker_mm: float = 11.0
+    squares_x: int = 11  # 198 x 144 mm: A4 landscape, lies flat inside the 220 mm plate
+    squares_y: int = 8
+    square_mm: float = 18.0
+    marker_mm: float = 13.5
     dictionary: str = "DICT_5X5_100"
 
     @classmethod
@@ -102,18 +102,40 @@ def board_image(spec: BoardSpec, dpi: int = 600) -> np.ndarray:
     )
 
 
+A4_MM = (210.0, 297.0)
+PAGE_MARGIN_MM = 10.0  # printers cannot print to the paper edge
+TEXT_BLOCK_MM = 42.0  # scale bar (10 mm below the board) + four lines of instructions
+
+
+def page_layout(spec: BoardSpec) -> tuple[tuple[float, float], tuple[float, float]]:
+    """A4 page size (mm, portrait or landscape to fit the board) and the board's top-left corner.
+
+    Raises ValueError when the board does not fit A4 with the margins and the text block.
+    """
+    w, h = spec.size_mm
+    for page in (A4_MM, A4_MM[::-1]):
+        pw, ph = page
+        if w + 2 * PAGE_MARGIN_MM <= pw and h + 2 * PAGE_MARGIN_MM + TEXT_BLOCK_MM <= ph:
+            return (pw, ph), ((pw - w) / 2, PAGE_MARGIN_MM)
+    raise ValueError(
+        f"a {w:g} x {h:g} mm board does not fit on A4 with margins and the scale bar: "
+        "use fewer or smaller squares (calibration.board)"
+    )
+
+
 def write_board_pdf(spec: BoardSpec, path: str | os.PathLike[str], dpi: int = 600) -> None:
-    """A4 PDF at exact scale: board, 100 mm scale bar and printing instructions."""
+    """A4 PDF at exact scale (portrait or landscape): board, 100 mm scale bar, instructions."""
     from PIL import Image, ImageDraw
 
     px_per_mm = dpi / 25.4
-    page = Image.new("L", (round(210 * px_per_mm), round(297 * px_per_mm)), 255)
+    (pw, ph), (bx, by) = page_layout(spec)
+    page = Image.new("L", (round(pw * px_per_mm), round(ph * px_per_mm)), 255)
     board = Image.fromarray(board_image(spec, dpi))
-    left = round(20 * px_per_mm)
-    top = round(30 * px_per_mm)
+    left = round(bx * px_per_mm)
+    top = round(by * px_per_mm)
     page.paste(board, (left, top))
     draw = ImageDraw.Draw(page)
-    y_bar = top + board.height + round(15 * px_per_mm)
+    y_bar = top + board.height + round(10 * px_per_mm)
     x1 = left + round(100 * px_per_mm)
     lw = max(2, round(0.3 * px_per_mm))
     draw.line([(left, y_bar), (x1, y_bar)], fill=0, width=lw)
@@ -125,7 +147,7 @@ def write_board_pdf(spec: BoardSpec, path: str | os.PathLike[str], dpi: int = 60
         "100 mm scale bar - check with calipers after printing",
         f"ChArUco {spec.squares_x} x {spec.squares_y} squares, {spec.square_mm} mm squares, "
         f"{spec.marker_mm} mm markers, {spec.dictionary}",
-        "Print at 100% / actual size (no 'fit to page'). Glue flat onto glass or an aluminium plate.",
+        "Print at 100% / actual size (no 'fit to page'), matte paper. Glue flat onto glass or aluminium.",
         "Measure several squares with calipers and pass the mean: screwsynth-calib intrinsics --square-mm X",
     ]
     font_px = round(3.2 * px_per_mm)

@@ -243,7 +243,7 @@ def cmd_report(ctx: _Ctx, args: argparse.Namespace) -> int:
 
 
 def cmd_make_sample(ctx: _Ctx, args: argparse.Namespace) -> int:
-    truth = synthetic.make_sample(resolve(args.out), args.seed)
+    truth = synthetic.make_sample(resolve(args.out), args.seed, ctx.spec)  # the configured board
     _out(
         f"wrote synthetic sample set to {resolve(args.out)} (truth.json: K {truth['camera_matrix'][0][0]:.0f})"
     )

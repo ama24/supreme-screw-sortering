@@ -56,12 +56,14 @@ Run every `python3 ... .py` command on the Pi (in `~/calib`) and every `screwsyn
    screwsynth-calib board --markers
    ```
 
-   This creates `data/calibration/charuco_board.pdf`: 9 × 7 squares of 15 mm, 11 mm markers, DICT_5X5_100, with a
-   100 mm scale bar.
+   This creates `data/calibration/charuco_board.pdf` (A4 landscape): 11 × 8 squares of 18 mm (198 × 144 mm),
+   13.5 mm markers, DICT_5X5_100, and a 100 mm scale bar.
+   - **Why this size:** it is as large as possible while still lying flat on the 220 mm TPU plate inside the lip
+     (needed for the extrinsic step). In each intrinsic view it covers about a third of the image.
    - Print it at **100% / actual size**, without "fit to page". Check the scale bar with calipers.
    - Glue it perfectly flat onto glass or an aluminium plate.
-   - Measure several squares with calipers and note the mean (for example 14.96 mm). Every solver takes it as
-     `--square-mm 14.96`.
+   - Measure several squares with calipers and note the mean (for example 17.96 mm). Every solver takes it as
+     `--square-mm 17.96`.
    - `--markers` also writes SVGs for the optional plate-corner ArUco markers (see `corner_marker_ids` in the
      config).
 4. **Capture 25–40 intrinsic views** (Pi):
@@ -73,13 +75,13 @@ Run every `python3 ... .py` command on the Pi (in `~/calib`) and every `screwsyn
    Press Enter for each view and `q` to finish. After each view the script prints the live coverage map of where
    corners have been seen, and warns about blur.
    - Cover the **whole frame**, including the corners and edges.
-   - Rotate the board in-plane, and tilt it by **±15° at most**. With locked focus at 300 mm, the depth of field is
+   - Rotate the board in-plane, and tilt it by **±10° at most**. With locked focus at 300 mm, the depth of field is
      only about ±20 mm.
    - Hold the board still while capturing.
 5. **Solve intrinsics** (PC), after copying the captures (`scp -r pi@<pi-host>:~/calib/captures data/real/calib`):
 
    ```bash
-   screwsynth-calib intrinsics --images data/real/calib/intrinsics --square-mm 14.96
+   screwsynth-calib intrinsics --images data/real/calib/intrinsics --square-mm 17.96
    ```
 
    - The solver rejects views that are blurry, have too few corners, or don't contain the board.
@@ -91,7 +93,7 @@ Run every `python3 ... .py` command on the Pi (in `~/calib`) and every `screwsyn
 
    ```bash
    python3 capture.py --settings camera_settings.json --out captures/extrinsic --mode extrinsic
-   screwsynth-calib extrinsic --image data/real/calib/extrinsic/board_flat.png --square-mm 14.96 \
+   screwsynth-calib extrinsic --image data/real/calib/extrinsic/board_flat.png --square-mm 17.96 \
        --board-thickness-mm 4.1 --area-origin X Y --area-size 220 220
    ```
 
