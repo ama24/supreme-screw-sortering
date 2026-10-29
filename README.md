@@ -30,7 +30,7 @@ Project conventions are in [CLAUDE.md](CLAUDE.md). The build guide, with one pro
 | 06 | postprocess | lens distortion (RGB and mask), noise, vignetting, compression | done |
 | 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays | done |
 | 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation | done (training runs pending) |
-| 09 | realdata    | capture and label a real validation set, compare real vs synthetic | TODO |
+| 09 | realdata    | capture and label a real validation set, compare real vs synthetic | done (first real session pending) |
 | –  | pipeline    | dataset builder: recipes, one-command runner (`screwsynth-dataset`), browser GUI (`screwsynth-gui`) | done |
 
 Each tool has code in `src/screwsynth/<tool>/` and docs in `tools/<tool>/README.md`.
@@ -170,7 +170,7 @@ git clone https://github.com/ama24/supreme-screw-sortering.git
 cd supreme-screw-sortering/tools/calibration/pi
 python3 -m venv --system-site-packages ~/screwcam     # system packages: Picamera2 comes from apt
 source ~/screwcam/bin/activate
-pip install -r requirements.txt                       # OpenCV contrib (headless)
+pip install -r requirements.txt                       # OpenCV contrib (headless), pyserial
 rpicam-hello --list-cameras                           # the IMX708 must be listed
 ```
 
@@ -202,6 +202,7 @@ Commands installed by the package:
 | `screwsynth-train` | 08: train stage 1/2, fine-tune, learning curve, ONNX export, measurement-method comparison |
 | `screwsynth-infer` | 08: photo → parts, sizes, lengths, plate positions (JSON + image) |
 | `screwsynth-eval` | 08: mAP, size confusion, length accuracy, sim-to-real gap |
+| `screwsynth-real` | 09: sessions, Pi capture with homing/parking, inventory, pre-annotation, CVAT round trip, length matching, val_real, sim-to-real report |
 
 ### Troubleshooting
 
