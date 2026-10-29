@@ -1,0 +1,13 @@
+# Stage 1 with the small model: more accurate, ~2.5x slower to train and run than nano.
+stage: seg
+model: yolo26s-seg.pt
+imgsz: 1024
+epochs: 120
+batch: -1
+patience: 30
+cache: ram
+workers: 4
+augment:
+  degrees: 180
+  scale: 0.1
+  close_mosaic: 10

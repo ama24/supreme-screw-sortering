@@ -214,8 +214,18 @@ labels:
   min_instances_per_class: 3000
   val_real: null               # e.g. ../../real/val_real/images/val  (written as val_real in the yaml)
 
-# 08 train — stage 1, stage 2, measurement
-train: {}
+# 08 train — stage 1, stage 2, measurement (experiments: configs/train/*.yaml)
+train:
+  runs_dir: runs               # training runs: runs/<stage>/<experiment>
+  stage1_weights: null         # default for screwsynth-infer, e.g. runs/seg/stage1_nano/weights/best.pt
+  stage2_weights: null         # keypoint model; null = classical measurement only
+  infer:
+    conf: 0.25                 # stage-1 detection confidence
+    iou: 0.6
+    max_det: 300
+    pose_conf: 0.5             # keypoint confidence needed to trust method A (else method B)
+    border_px: 3               # masks within this of the ROI border: cut, not measurable
+    method: auto               # auto | keypoints | classical
 
 # 09 realdata — real captures and sim-to-real
 realdata: {}

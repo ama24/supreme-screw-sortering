@@ -29,7 +29,7 @@ Project conventions are in [CLAUDE.md](CLAUDE.md). The build guide, with one pro
 | 05 | scenegen    | BlenderProc scene generation and rendering (RGB + instance mask + `meta.json`) | implemented (Blender run pending) |
 | 06 | postprocess | lens distortion (RGB and mask), noise, vignetting, compression | done |
 | 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays | done |
-| 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation | TODO |
+| 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation | done (training runs pending) |
 | 09 | realdata    | capture and label a real validation set, compare real vs synthetic | TODO |
 | –  | pipeline    | dataset builder: recipes, one-command runner (`screwsynth-dataset`), browser GUI (`screwsynth-gui`) | done |
 
@@ -147,7 +147,7 @@ Super with a current driver:
 
 ```bash
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-pip install -e ".[train]"
+pip install -e ".[train]"      # ultralytics, onnx, onnxruntime
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"   # must print True
 ```
 
@@ -199,6 +199,9 @@ Commands installed by the package:
 | `blenderproc run tools/scenegen/generate.py`, `python tools/scenegen/batch.py` | 05: rendering |
 | `screwsynth-post` | 06: camera/sensor simulation, realism report |
 | `screwsynth-labels` | 07: dataset export, preview, check |
+| `screwsynth-train` | 08: train stage 1/2, fine-tune, learning curve, ONNX export, measurement-method comparison |
+| `screwsynth-infer` | 08: photo → parts, sizes, lengths, plate positions (JSON + image) |
+| `screwsynth-eval` | 08: mAP, size confusion, length accuracy, sim-to-real gap |
 
 ### Troubleshooting
 

@@ -1,0 +1,14 @@
+# Stage 1: detect + segment + classify on the ROI at 1024 px (YOLO26 nano, the fastest start).
+# screwsynth-train run stage1_nano --dataset datasets/<name>
+stage: seg
+model: yolo26n-seg.pt        # pretrained on COCO, downloaded on first use
+imgsz: 1024
+epochs: 100
+batch: -1                    # auto-fit to the 8 GB GPU
+patience: 30
+cache: ram                   # ram | disk | false (use disk if RAM is short)
+workers: 4
+augment:                     # overhead camera: any rotation, flips, +-10 % scale, no perspective
+  degrees: 180
+  scale: 0.1
+  close_mosaic: 10
