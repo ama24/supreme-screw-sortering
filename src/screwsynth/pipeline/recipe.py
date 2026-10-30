@@ -42,6 +42,9 @@ class PipelineSettings:
     scenes: int = 1000  # layouts to render (each gives scenegen.variants_per_layout images)
     chunk: int = 200  # scenes per Blender process (restarted between chunks)
     preview: bool = False  # low resolution and samples (scenegen.preview): a quick look
+    render_workers: int = (
+        0  # Blender renders side by side; 0 = auto (from each NVIDIA GPU's memory)
+    )
     steps: list[str] = field(default_factory=lambda: list(STEPS))
     formats: list[str] = field(default_factory=lambda: ["seg", "pose", "coco", "crops"])
 
@@ -51,6 +54,7 @@ class PipelineSettings:
             "scenes": self.scenes,
             "chunk": self.chunk,
             "preview": self.preview,
+            "render_workers": self.render_workers,
             "steps": list(self.steps),
             "formats": list(self.formats),
         }
@@ -86,6 +90,7 @@ class Recipe:
                 scenes=int(p.get("scenes", defaults.scenes)),
                 chunk=int(p.get("chunk", defaults.chunk)),
                 preview=bool(p.get("preview", defaults.preview)),
+                render_workers=int(p.get("render_workers", defaults.render_workers) or 0),
                 steps=list(p.get("steps", defaults.steps)),
                 formats=list(p.get("formats", defaults.formats)),
             ),
@@ -113,6 +118,8 @@ class Recipe:
             raise RecipeError(f"pipeline.camera must be one of {CAMERAS}, not {p.camera!r}")
         if p.scenes < 1 or p.chunk < 1:
             raise RecipeError("pipeline.scenes and pipeline.chunk must be >= 1")
+        if p.render_workers < 0:
+            raise RecipeError("pipeline.render_workers must be >= 0 (0 = auto)")
         bad = set(p.steps) - set(STEPS)
         if bad:
             raise RecipeError(f"unknown steps {sorted(bad)}; choose from {STEPS}")

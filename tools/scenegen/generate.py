@@ -45,6 +45,9 @@ def main(argv=None) -> int:
     )
     ap.add_argument("--preview", action="store_true", help="10 low-res, low-sample scenes")
     ap.add_argument("--config", default=None)
+    ap.add_argument(
+        "--worker", type=int, default=None, help="index of this parallel render (own balance state)"
+    )
     args = ap.parse_args(argv)
 
     ensure_packages()
@@ -64,6 +67,7 @@ def main(argv=None) -> int:
             args.resume,
             args.nominal_camera,
             args.preview,
+            worker=args.worker,
         ),
         cfg,
     )

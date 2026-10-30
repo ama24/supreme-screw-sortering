@@ -165,6 +165,7 @@ def test_coerce():
 def test_plan_commands(base):
     r = Recipe("p1")
     r.pipeline.scenes, r.pipeline.chunk, r.pipeline.preview = 450, 200, True
+    r.pipeline.render_workers = 1  # explicit: "auto" depends on this computer's GPU
     r.pipeline.formats = ["seg", "crops"]
     plan = steps.build_plan(r, base)
     assert [s.key for s in plan.steps] == list(recipe.STEPS)
@@ -446,3 +447,64 @@ def test_dataset_outputs_explain_each_file(tmp_path):
     out = steps.dataset_outputs(tmp_path)
     assert [o[0] for o in out] == ["seg.yaml", "crops.yaml", "coco/"]
     assert "Stage 1" in out[0][2] and "length" in out[1][2]
+
+
+# ------------------------------------------------------------------------- parallel renders
+
+
+def test_auto_render_workers_follow_each_gpu():
+    g = steps.GPU
+    n, slots, why = steps.auto_render_workers([g(0, "RTX 2070 SUPER", 8.0)], free_gb=40, cores=16)
+    assert n == 3 and slots == [0, 0, 0] and "3 on RTX 2070 SUPER" in why
+    n, slots, _ = steps.auto_render_workers([g(0, "A", 8.0), g(1, "B", 12.0)], free_gb=64, cores=32)
+    assert n == 7 and slots[:4] == [0, 1, 0, 1]  # spread over both cards
+    assert steps.auto_render_workers([g(0, "A", 24.0)], free_gb=8, cores=32)[0] == 2  # RAM limit
+    assert steps.auto_render_workers([g(0, "A", 24.0)], free_gb=99, cores=4)[0] == 2  # CPU limit
+    assert steps.auto_render_workers([], free_gb=99, cores=32)[0] == 1
+    assert steps.GPU(0, "small", 4.0).workers == 1
+
+
+def test_parallel_render_plan(base, monkeypatch):
+    monkeypatch.setattr(
+        steps, "nvidia_gpus", lambda: [steps.GPU(0, "A", 8.0), steps.GPU(1, "B", 8.0)]
+    )
+    monkeypatch.setattr(steps, "free_commit_gb", lambda: 64.0)
+    monkeypatch.setattr(steps.os, "cpu_count", lambda: 32)
+    r = Recipe("par")
+    r.pipeline.scenes, r.pipeline.chunk = 100, 200
+    plan = steps.build_plan(r, base)
+    step = plan.step("render")
+    assert step.parallel == 6
+    cmds = step.commands()
+    assert len(cmds) == 6 and {c[c.index("--scenes") + 1] for c in cmds} <= {"17", "15"}
+    assert [c[c.index("--worker") + 1] for c in cmds] == ["0", "1", "2", "3", "4", "5"]
+    assert step.lane_env(0) == {"CUDA_VISIBLE_DEVICES": "0"} and step.lane_env(1) == {
+        "CUDA_VISIBLE_DEVICES": "1"
+    }
+    r.pipeline.render_workers = 1  # explicit: one Blender, no --worker (same files as before)
+    single = steps.build_plan(r, base).step("render")
+    assert single.parallel == 1 and all("--worker" not in c for c in single.commands())
+
+
+def test_runner_runs_lanes_side_by_side(base, no_env):
+    sleep = "import os, time; time.sleep(1.0); print('gpu', os.environ.get('MT_LANE'), flush=True)"
+    plan = _plan(base, {"render": [_py(sleep) for _ in range(4)]})
+    plan.steps[0].parallel = 4
+    plan.steps[0].lane_env = lambda k: {"MT_LANE": str(k)}
+    lines: list[str] = []
+    t0 = time.perf_counter()
+    assert runner.Runner(plan, on_line=lines.append).run()
+    assert time.perf_counter() - t0 < 3.5  # 4 x 1 s side by side, not one after another
+    assert sorted(ln.split()[-1] for ln in lines if " gpu " in f" {ln}") == ["0", "1", "2", "3"]
+    st = read_json(steps.status_path(plan.run_dir))
+    assert st["steps"]["render"]["commands_done"] == 4 and st["steps"]["render"]["state"] == "done"
+
+
+def test_parallel_lane_failure_stops_new_work(base, no_env):
+    fail = _py("import sys; sys.exit(2)")
+    ok = _py("print('ran')")
+    plan = _plan(base, {"render": [fail, _py("import time; time.sleep(0.5)"), ok, ok]})
+    plan.steps[0].parallel = 2
+    assert not runner.Runner(plan, on_line=lambda line: None).run()
+    st = read_json(steps.status_path(plan.run_dir))
+    assert st["steps"]["render"]["state"] == "failed" and st["steps"]["render"]["returncode"] == 2

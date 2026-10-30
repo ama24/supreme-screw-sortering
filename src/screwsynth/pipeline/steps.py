@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import ctypes
 import json
+import os
 import shutil
+import subprocess
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -44,6 +46,10 @@ class Step:
     clean: list[Path] = field(default_factory=list)
     # images worth showing for this step (may not exist yet)
     previews: list[Path] = field(default_factory=list)
+    # run the commands in this many lanes at once (lane k runs commands k, k+n, k+2n, ...)
+    parallel: int = 1
+    # extra environment per lane, e.g. which GPU it uses
+    lane_env: Callable[[int], dict[str, str]] | None = None
 
 
 @dataclass
@@ -103,19 +109,30 @@ def build_plan(recipe: Recipe, base: dict[str, Any] | None = None) -> Plan:
             py_module(mod, "contact-sheet", "--out", sheet, *c),
         ]
 
+    workers, slots = render_workers(p.render_workers)
+
     def render() -> list[list[str]]:
         exe = blenderproc_exe() or "blenderproc"
         cmds = []
-        for start in range(0, p.scenes, p.chunk):
-            n = min(p.chunk, p.scenes - start)
+        # with several workers, smaller chunks so every worker gets some
+        chunk = max(1, min(p.chunk, -(-p.scenes // workers)))
+        for i, start in enumerate(range(0, p.scenes, chunk)):
+            n = min(chunk, p.scenes - start)
             cmd = [exe, "run", str(GENERATE), "--run", name, "--start", str(start)]
             cmd += ["--scenes", str(n), "--resume", *c]
             if p.camera == "nominal":
                 cmd.append("--nominal-camera")
             if p.preview:
                 cmd.append("--preview")
+            if workers > 1:  # chunk i runs in lane i % workers: that lane's balance state
+                cmd += ["--worker", str(i % workers)]
             cmds.append(cmd)
         return cmds
+
+    def render_env(lane: int) -> dict[str, str]:
+        if len(set(slots)) <= 1:  # one GPU: nothing to choose
+            return {}
+        return {"CUDA_VISIBLE_DEVICES": str(slots[lane % len(slots)])}
 
     variants = max(1, int(get_path(cfg, "scenegen.variants_per_layout", 1) or 1))
 
@@ -156,7 +173,14 @@ def build_plan(recipe: Recipe, base: dict[str, Any] | None = None) -> Plan:
         "restposes": Step(
             "restposes", TITLES["restposes"], restposes, previews=[previews / "restposes.png"]
         ),
-        "render": Step("render", TITLES["render"], render, progress=render_progress),
+        "render": Step(
+            "render",
+            TITLES["render"],
+            render,
+            progress=render_progress,
+            parallel=workers,
+            lane_env=render_env,
+        ),
         "postprocess": Step(
             "postprocess",
             TITLES["postprocess"],
@@ -248,6 +272,22 @@ def preflight(plan: Plan, min_free_gb: float = 6.0) -> list[Check]:
             )
         else:
             out.append(Check("ok", msg))
+    if "render" in keys:
+        workers = plan.step("render").parallel
+        need = workers * RENDER_RAM_GB
+        text = f"Renders in parallel: {workers}" + (
+            "" if plan.recipe.pipeline.render_workers else " (auto)"
+        )
+        if free is not None and workers > 1 and free < need:
+            out.append(
+                Check(
+                    "warning",
+                    text + f" need about {need:.0f} GB of memory, {free:.1f} GB free: lower "
+                    "'Renders in parallel' or close large programs",
+                )
+            )
+        else:
+            out.append(Check("ok", text))
     if "catalogue" not in keys and not resolve(get_path(cfg, "paths.classes")).is_file():
         out.append(
             Check(
@@ -274,6 +314,90 @@ def preflight(plan: Plan, min_free_gb: float = 6.0) -> list[Check]:
                 )
             )
     return out
+
+
+# measured on the RTX 2070 Super, full resolution, 80-150 parts: one Blender render uses about
+# 2.1 GB of GPU memory and 3.2 GB of RAM while keeping the GPU only ~37 % busy (physics and scene
+# set-up run on the CPU), so several renders side by side use the card much better
+RENDER_VRAM_GB = 2.4  # per render, with some headroom
+RENDER_RAM_GB = 3.5
+DESKTOP_VRAM_GB = 0.8  # left for the screen and other programs
+MAX_WORKERS = 8
+
+
+@dataclass
+class GPU:
+    index: int
+    name: str
+    memory_gb: float
+
+    @property
+    def workers(self) -> int:
+        """Renders this card can hold at once."""
+        return max(1, int((self.memory_gb - DESKTOP_VRAM_GB) / RENDER_VRAM_GB))
+
+
+def nvidia_gpus() -> list[GPU]:
+    """NVIDIA GPUs from nvidia-smi (empty without a driver)."""
+    exe = shutil.which("nvidia-smi")
+    if not exe:
+        return []
+    try:
+        out = subprocess.run(
+            [exe, "--query-gpu=index,name,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    gpus = []
+    for line in out.strip().splitlines():
+        parts = [s.strip() for s in line.split(",")]
+        try:
+            gpus.append(GPU(int(parts[0]), parts[1], float(parts[2]) / 1024))
+        except (IndexError, ValueError):
+            continue
+    return gpus
+
+
+def auto_render_workers(
+    gpus: list[GPU] | None = None, free_gb: float | None = None, cores: int | None = None
+) -> tuple[int, list[int], str]:
+    """How many renders to run at once: (workers, GPU index per slot, explanation).
+
+    Each NVIDIA card holds as many renders as its memory allows; RAM (free commit memory) and CPU
+    cores cap the total.
+    """
+    gpus = nvidia_gpus() if gpus is None else gpus
+    if not gpus:
+        return 1, [], "no NVIDIA GPU found: one render at a time"
+    slots = [g.index for g in gpus for _ in range(g.workers)]
+    per_gpu = ", ".join(f"{g.workers} on {g.name} ({g.memory_gb:.0f} GB)" for g in gpus)
+    n = len(slots)
+    why = per_gpu
+    free_gb = free_commit_gb() if free_gb is None else free_gb
+    if free_gb is not None and int(free_gb / RENDER_RAM_GB) < n:
+        n = max(1, int(free_gb / RENDER_RAM_GB))
+        why += f"; limited to {n} by free memory ({free_gb:.0f} GB, ~{RENDER_RAM_GB:g} GB each)"
+    cores = (os.cpu_count() or 2) if cores is None else cores
+    if max(1, cores // 2) < n:
+        n = max(1, cores // 2)
+        why += f"; limited to {n} by CPU cores ({cores})"
+    n = min(n, MAX_WORKERS)
+    # spread the slots over the cards: GPU 0, GPU 1, GPU 0, ...
+    order = sorted(range(len(slots)), key=lambda i: (slots[:i].count(slots[i]), slots[i]))
+    return n, [slots[i] for i in order][:n], why
+
+
+def render_workers(setting: int) -> tuple[int, list[int]]:
+    """The recipe's render_workers (0 = auto) -> (workers, GPU index per lane)."""
+    n, slots, _ = auto_render_workers()
+    if setting and setting > 0:
+        gpus = sorted(set(slots)) or [0]
+        return setting, [gpus[i % len(gpus)] for i in range(setting)]
+    return n, slots
 
 
 def free_commit_gb() -> float | None:

@@ -43,6 +43,7 @@ from .runner import Runner, tail
 from .steps import (
     TITLES,
     Check,
+    auto_render_workers,
     build_plan,
     dataset_outputs,
     latest_render,
@@ -449,6 +450,19 @@ class BuilderPage:
                         step=50,
                         on_change=lambda e: e.value and self._set_attr(p, "chunk", int(e.value)),
                     ).props("dense outlined").classes("w-56")
+                    auto_n, _, why = auto_render_workers()
+                    ui.number(
+                        f"Renders in parallel (0 = auto: {auto_n})",
+                        value=p.render_workers,
+                        min=0,
+                        max=16,
+                        step=1,
+                        on_change=lambda e: self._set_attr(p, "render_workers", int(e.value or 0)),
+                    ).props("dense outlined").classes("w-64").mark("render-workers").tooltip(
+                        "One Blender render keeps the GPU only partly busy (physics and scene set-up "
+                        "run on the CPU), so several run side by side. Auto: as many as each NVIDIA "
+                        f"card's memory holds, capped by RAM and CPU cores. Here: {why}."
+                    )
                     ui.switch(
                         "Preview quality",
                         value=p.preview,

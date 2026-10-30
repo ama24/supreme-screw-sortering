@@ -43,9 +43,10 @@ class Runner:
             "state": "idle",
             "steps": {s.key: {"state": "pending"} for s in plan.steps},
         }
-        self._proc: subprocess.Popen[str] | None = None
+        self._procs: set[subprocess.Popen[str]] = set()
         self._cancel = threading.Event()
         self._lock = threading.Lock()
+        self._io_lock = threading.RLock()
         self._log_file: Any = None
 
     # -------------------------------------------------------------- control
@@ -58,9 +59,10 @@ class Runner:
         """Stop after killing the current command (and its children, e.g. Blender)."""
         self._cancel.set()
         with self._lock:
-            proc = self._proc
-        if proc is not None and proc.poll() is None:
-            _kill_tree(proc)
+            procs = list(self._procs)
+        for proc in procs:
+            if proc.poll() is None:
+                _kill_tree(proc)
 
     def progress(self) -> dict[str, tuple[int, int]]:
         """(done, total) per step: finished commands, or the step's own counter while running."""
@@ -125,6 +127,8 @@ class Runner:
         self._emit(f"\n=== [{step.key}] {step.title}")
         self._save()
         t0 = time.perf_counter()
+        if step.parallel > 1 and len(cmds) > 1:
+            return self._run_parallel(step, cmds, t0)
         for cmd in cmds:
             code = self._run_command(cmd)
             if self._cancel.is_set():
@@ -145,9 +149,54 @@ class Runner:
         self._emit(f"=== [{step.key}] done in {st['seconds']:.0f} s")
         return True
 
-    def _run_command(self, cmd: Sequence[str]) -> int:
-        self._emit("$ " + " ".join(cmd))
-        env = {**os.environ, "PYTHONUNBUFFERED": "1", "PYTHONIOENCODING": "utf-8"}
+    def _run_parallel(self, step: Step, cmds: list[list[str]], t0: float) -> bool:
+        """Lane k runs commands k, k+n, ... one after another; the lanes run side by side."""
+        st = self.status["steps"][step.key]
+        lanes = min(step.parallel, len(cmds))
+        self._emit(f"--- {lanes} in parallel")
+        failed: list[tuple[list[str], int]] = []
+
+        def lane(k: int) -> None:
+            env = step.lane_env(k) if step.lane_env else {}
+            for cmd in cmds[k::lanes]:
+                if self._cancel.is_set() or failed:
+                    return  # stop starting new work; running commands finish
+                code = self._run_command(cmd, env, prefix=f"[{k + 1}/{lanes}] ")
+                if code != 0 and not self._cancel.is_set():
+                    failed.append((cmd, code))
+                    return
+                with self._lock:
+                    st["commands_done"] += 1
+                self._save()
+
+        threads = [threading.Thread(target=lane, args=(k,), daemon=True) for k in range(lanes)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join()
+        seconds = round(time.perf_counter() - t0, 1)
+        if self._cancel.is_set():
+            st.update(state="cancelled", seconds=seconds)
+            return False
+        if failed:
+            cmd, code = failed[0]
+            st.update(state="failed", returncode=code, failed_command=cmd, seconds=seconds)
+            self._emit(f"!!! [{step.key}] failed with exit code {code}: {' '.join(cmd)}")
+            return False
+        st.update(state="done", finished=_now(), seconds=seconds)
+        self._emit(f"=== [{step.key}] done in {seconds:.0f} s ({lanes} in parallel)")
+        return True
+
+    def _run_command(
+        self, cmd: Sequence[str], extra_env: dict[str, str] | None = None, prefix: str = ""
+    ) -> int:
+        self._emit(prefix + "$ " + " ".join(cmd))
+        env = {
+            **os.environ,
+            "PYTHONUNBUFFERED": "1",
+            "PYTHONIOENCODING": "utf-8",
+            **(extra_env or {}),
+        }
         kwargs: dict[str, Any] = {}
         if sys.platform == "win32":
             kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
@@ -171,15 +220,15 @@ class Runner:
             self._emit(f"!!! cannot start {cmd[0]}: {exc}")
             return 127
         with self._lock:
-            self._proc = proc
+            self._procs.add(proc)
         try:
             assert proc.stdout is not None
             for line in proc.stdout:
-                self._emit(line.rstrip("\r\n"))
+                self._emit(prefix + line.rstrip("\r\n"))
             return proc.wait()
         finally:
             with self._lock:
-                self._proc = None
+                self._procs.discard(proc)
 
     # -------------------------------------------------------------- helpers
 
@@ -190,6 +239,8 @@ class Runner:
             shutil.rmtree(run_dir / sub, ignore_errors=True)
         for f in ("balance_state.json", "run_config.yaml", "failed.jsonl", "log.txt"):
             (run_dir / f).unlink(missing_ok=True)
+        for f in [*run_dir.glob("balance_state_w*.json"), *run_dir.glob("log_w*.txt")]:
+            f.unlink(missing_ok=True)
         for f in run_dir.glob("show_*.png"):
             f.unlink()
         shutil.rmtree(self.plan.dataset_dir, ignore_errors=True)
@@ -198,13 +249,15 @@ class Runner:
         )
 
     def _emit(self, line: str) -> None:
-        if self._log_file is not None:
-            self._log_file.write(line + "\n")
-            self._log_file.flush()
-        self.on_line(line)
+        with self._io_lock:  # parallel lanes share the log
+            if self._log_file is not None:
+                self._log_file.write(line + "\n")
+                self._log_file.flush()
+            self.on_line(line)
 
     def _save(self) -> None:
-        write_json(status_path(self.plan.run_dir), self.status)
+        with self._io_lock:
+            write_json(status_path(self.plan.run_dir), self.status)
 
 
 def write_environment(path: Path) -> None:
