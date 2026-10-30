@@ -261,6 +261,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
         int(sg.get("balance_slack", 1)),
         sg.get("finish_weights"),
         float(sg.get("unknown_fraction", 0.0)),
+        float(sg.get("catch_up_share", 0.25)),
     )
 
     run_cfg = {

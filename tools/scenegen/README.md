@@ -100,6 +100,11 @@ Runs are **resumable and deterministic**:
    `crowded_fraction`.
    - Classes are drawn by **deficit sampling**: uniformly among classes whose instance count so far is within
      `balance_slack` of the minimum. Counts persist across chunks.
+   - **Catch-up of new classes.** A class added to the catalogue mid-run starts at 0. Deficit sampling alone
+     would then fill whole scenes with it. Instead, classes further below the median count than the normal
+     balancing spread (`balance_slack` + 1) are *behind*: each draw comes from them with probability `catch_up_share` (default
+     0.25), otherwise from the other classes as usual. New classes therefore appear in every scene, mixed with
+     everything else, until they have caught up. This never triggers in a run that starts from zero.
    - Then a length is chosen uniformly among the class's enabled parts, and a finish from the part's allowed
      list (optionally weighted).
 2. **Placement.**
@@ -224,6 +229,7 @@ Per object:
 | `min_gap_mm`, `crowded_gap_mm`, `touch_probability` | 1.0, −0.3, 0.5 | Spacing and touching |
 | `area_margin_mm`, `max_place_tries` | 3, 60 | Placement |
 | `balance_slack`, `finish_weights` | 1, {} | Class balancing and finish weights |
+| `catch_up_share` | 0.25 | Share of each scene's parts given to classes far behind (e.g. added mid-run); 0 = off |
 | `unknown_fraction` | 0.08 | Share of parts that are unknown junk (class UNKNOWN), drawn outside the class balancing |
 | `variants_per_layout`, `keypoint_window_px` | 1, 2 | Lighting variants and keypoint visibility window |
 | `nominal_camera.*` | 4.74 mm, 1.4 µm, 4608×2592, 300 mm | `--nominal-camera` |
