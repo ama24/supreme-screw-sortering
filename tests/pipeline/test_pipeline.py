@@ -412,6 +412,32 @@ async def test_gui_background_colours(tmp_path, monkeypatch):
     assert saved.config["scenegen"]["plate"]["colours"] == [{"name": "colour_2", "hex": "#808080"}]
 
 
+@pytest.mark.anyio
+async def test_gui_background_switches(tmp_path, monkeypatch):
+    """Background tab: solid colours on and photos off by default; the switches save to the recipe."""
+    pytest.importorskip("nicegui")
+    from nicegui.testing.user_simulation import user_simulation
+
+    from screwsynth.pipeline import gui
+
+    monkeypatch.setattr(recipe, "recipes_dir", lambda: tmp_path)
+    monkeypatch.setattr(gui, "recipes_dir", lambda: tmp_path)
+    Recipe("swtest").save(tmp_path / "swtest.yaml")
+    async with user_simulation(root=gui.page) as user:
+        await user.open("/?recipe=swtest&tab=background")
+        await user.should_see("use solid colours")
+        await user.should_see("use surface photos")
+        user.find(marker="enable-images").click()
+        user.find(marker="enable-colours").click()
+        user.find(marker="save").click()
+    saved = recipe.load_recipe(tmp_path / "swtest.yaml")
+    assert saved.config["scenegen"]["plate"]["background_enabled"] == {
+        "calibrated_photo": True,
+        "images": True,
+        "colours": False,
+    }
+
+
 def test_dataset_outputs_explain_each_file(tmp_path):
     assert steps.dataset_outputs(tmp_path) == []
     for f in ("seg.yaml", "crops.yaml"):

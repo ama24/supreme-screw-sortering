@@ -22,6 +22,8 @@ LIBRARY = "backgrounds.yaml"
 SOURCES = ("calibrated_photo", "images", "colours")
 DEFAULT_COLOURS = [{"name": "silicone_blue", "hex": "#3A86D4"}]  # silicone phone-repair mat
 DEFAULT_WEIGHTS = {"calibrated_photo": 0.6, "images": 0.2, "colours": 0.2}
+# on/off switch per source (the GUI's switches); weights only share scenes among those on
+DEFAULT_ENABLED = {"calibrated_photo": True, "images": False, "colours": True}
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp")
 
 
@@ -157,6 +159,8 @@ def weights(plate: Mapping[str, Any], have_photo: bool, have_images: bool) -> di
     if raw is None:
         raw = DEFAULT_WEIGHTS
     w = {s: max(0.0, float(dict(raw).get(s, DEFAULT_WEIGHTS[s]))) for s in SOURCES}
+    on = enabled(plate)
+    w = {s: (v if on[s] else 0.0) for s, v in w.items()}
     if not have_photo:
         w["calibrated_photo"] = 0.0
     if not have_images:
@@ -164,6 +168,12 @@ def weights(plate: Mapping[str, Any], have_photo: bool, have_images: bool) -> di
     if sum(w.values()) <= 0:
         w["colours"] = 1.0  # always something to show
     return w
+
+
+def enabled(plate: Mapping[str, Any]) -> dict[str, bool]:
+    """Which sources are switched on (scenegen.plate.background_enabled)."""
+    raw = dict(plate.get("background_enabled") or {})
+    return {s: bool(raw.get(s, DEFAULT_ENABLED[s])) for s in SOURCES}
 
 
 def choose(

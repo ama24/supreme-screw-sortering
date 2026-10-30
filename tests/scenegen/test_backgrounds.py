@@ -40,12 +40,29 @@ def test_weights_drop_unavailable_sources():
     )
 
 
+def test_switches_turn_sources_off():
+    plate = {"background_weights": {"calibrated_photo": 0.6, "images": 0.2, "colours": 0.2}}
+    assert bg.enabled(plate) == {"calibrated_photo": True, "images": False, "colours": True}
+    assert bg.weights(plate, True, True)["images"] == 0.0  # photos are off by default
+    plate["background_enabled"] = {"images": True, "colours": False}
+    w = bg.weights(plate, False, True)
+    assert w == {"calibrated_photo": 0.0, "images": 0.2, "colours": 0.0}  # only the photos
+    rng = random.Random(1)
+    images = [bg.BackgroundImage("mat.jpg", 450.0)]
+    assert {bg.choose(plate, images, False, rng)["kind"] for _ in range(200)} == {"images"}
+    plate["background_enabled"] = {"images": False, "colours": False, "calibrated_photo": False}
+    assert bg.weights(plate, True, True)["colours"] == 1.0  # all off: fall back to colours
+
+
 def test_choose_respects_weights_and_is_deterministic():
     images = [
         bg.BackgroundImage("mat.jpg", 450.0, weight=3),
         bg.BackgroundImage("table.jpg", 600.0, weight=1),
     ]
-    plate = {"background_weights": {"calibrated_photo": 0.5, "images": 0.3, "colours": 0.2}}
+    plate = {
+        "background_weights": {"calibrated_photo": 0.5, "images": 0.3, "colours": 0.2},
+        "background_enabled": {"images": True},
+    }
     rng = random.Random(0)
     picks = [bg.choose(plate, images, True, rng) for _ in range(4000)]
     kinds = Counter(p["kind"] for p in picks)
