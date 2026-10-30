@@ -374,6 +374,8 @@ async def test_gui_run_button_runs_plan(tmp_path, monkeypatch, base, no_env):
     monkeypatch.setattr(gui, "preflight", lambda plan: [])
     async with user_simulation(root=gui.page) as user:
         await user.open("/?recipe=runtest&tab=run")
+        await user.should_see("Outputs")
+        await user.should_see("No dataset exported yet")
         user.find(marker="run").click()
         for _ in range(100):
             if not gui.RUN.busy and gui.RUN.runner is not None:
@@ -408,3 +410,13 @@ async def test_gui_background_colours(tmp_path, monkeypatch):
         user.find(marker="save").click()
     saved = recipe.load_recipe(tmp_path / "bgtest.yaml")
     assert saved.config["scenegen"]["plate"]["colours"] == [{"name": "colour_2", "hex": "#808080"}]
+
+
+def test_dataset_outputs_explain_each_file(tmp_path):
+    assert steps.dataset_outputs(tmp_path) == []
+    for f in ("seg.yaml", "crops.yaml"):
+        (tmp_path / f).write_text("names: {}\n")
+    (tmp_path / "coco").mkdir()
+    out = steps.dataset_outputs(tmp_path)
+    assert [o[0] for o in out] == ["seg.yaml", "crops.yaml", "coco/"]
+    assert "Stage 1" in out[0][2] and "length" in out[1][2]
