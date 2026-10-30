@@ -130,7 +130,7 @@ class Runner:
         if step.parallel > 1 and len(cmds) > 1:
             return self._run_parallel(step, cmds, t0)
         for cmd in cmds:
-            code = self._run_command(cmd)
+            code = self._run_retrying(step, cmd)
             if self._cancel.is_set():
                 st.update(state="cancelled", seconds=round(time.perf_counter() - t0, 1))
                 return False
@@ -161,7 +161,7 @@ class Runner:
             for cmd in cmds[k::lanes]:
                 if self._cancel.is_set() or failed:
                     return  # stop starting new work; running commands finish
-                code = self._run_command(cmd, env, prefix=f"[{k + 1}/{lanes}] ")
+                code = self._run_retrying(step, cmd, env, prefix=f"[{k + 1}/{lanes}] ")
                 if code != 0 and not self._cancel.is_set():
                     failed.append((cmd, code))
                     return
@@ -186,6 +186,25 @@ class Runner:
         st.update(state="done", finished=_now(), seconds=seconds)
         self._emit(f"=== [{step.key}] done in {seconds:.0f} s ({lanes} in parallel)")
         return True
+
+    def _run_retrying(
+        self,
+        step: Step,
+        cmd: Sequence[str],
+        extra_env: dict[str, str] | None = None,
+        prefix: str = "",
+    ) -> int:
+        """Run a command, restarting it up to step.retries times if it fails (not if cancelled)."""
+        code = self._run_command(cmd, extra_env, prefix)
+        for attempt in range(1, step.retries + 1):
+            if code == 0 or self._cancel.is_set():
+                break
+            self._emit(
+                f"{prefix}!!! exit code {code}, restarting ({attempt}/{step.retries}); "
+                "finished work is kept"
+            )
+            code = self._run_command(cmd, extra_env, prefix)
+        return code
 
     def _run_command(
         self, cmd: Sequence[str], extra_env: dict[str, str] | None = None, prefix: str = ""

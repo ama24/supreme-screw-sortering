@@ -105,12 +105,15 @@ step therefore runs several Blender processes side by side, each on its own chun
 state (`balance_state_w<k>.json`) and log (`log_w<k>.txt`).
 
 - **`render_workers: 0` (auto)**, set as "Renders in parallel" in the Dataset tab. The number comes from the hardware:
-  - each NVIDIA card holds `(memory - 0.8 GB) / 2.4 GB` renders (measured: about 2.1 GB of GPU memory and 3.2 GB
-    of RAM per render at full resolution);
-  - the total is capped by free memory (about 3.5 GB each) and by half the CPU cores;
+  - each NVIDIA card holds `(memory - 0.8 GB) / 3.2 GB` renders (measured: about 2.1 GB of GPU memory and 3.2 GB
+    of RAM per render at full resolution with 80-150 parts; crowded scenes need more, and 3 renders on an 8 GB card
+    ran out of memory);
+  - the total is capped by free memory (about 5 GB each) and by half the CPU cores;
   - with several cards, renders are spread over them (`CUDA_VISIBLE_DEVICES`).
-- **On the RTX 2070 Super (8 GB, 8 cores):** auto gives 3 renders, about 1.4x faster than one: roughly 19-20
-  instead of 27 s per scene. The CPU, not the GPU, is then the limit.
+- **On the RTX 2070 Super (8 GB, 8 cores):** auto gives 2 renders. Three were about 1.4x faster than one, but
+  crowded scenes then ran out of GPU memory and crashed Blender.
+- **A crashed render restarts** (up to 2 times) and carries on where it stopped (`--resume`): finished scenes are
+  kept. Only if it keeps failing does the step stop.
 - **A fixed number** (e.g. `1`) overrides auto. The same number of renders always gives the same scenes. A
   different number gives a different (equally valid) class balance, because each render balances its own
   share.
