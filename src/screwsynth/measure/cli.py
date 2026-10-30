@@ -71,7 +71,14 @@ def infer_main(argv: Sequence[str] | None = None) -> int:
         raise SystemExit("no stage-1 weights: pass --stage1 or set measure.stage1_weights")
     stage2 = args.stage2 or cfg.get("measure.stage2_weights")
     stage2 = None if stage2 in (None, "none") else resolve(stage2)
-    pipe = Pipeline(resolve(stage1), stage2, Geometry.from_config(cfg), st, _calibration(cfg, args))
+    pipe = Pipeline(
+        resolve(stage1),
+        stage2,
+        Geometry.from_config(cfg),
+        st,
+        _calibration(cfg, args),
+        resolve(cfg.get("paths.classes", "configs/classes.yaml")),
+    )
     for img in args.image:
         path = resolve(img)
         result, scene, _ = pipe.run(path)

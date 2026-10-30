@@ -308,12 +308,20 @@ class Pipeline:
         geometry: Geometry,
         settings: Settings,
         calibration: Mapping[str, Any] | None,
+        classes_yaml: str | Path | None = None,
     ) -> None:
         from ultralytics import YOLO
+
+        from .modelcard import check_classes
 
         self.stage1 = YOLO(str(stage1))
         self.stage2 = YOLO(str(stage2)) if stage2 else None
         self.names = {int(k): v for k, v in self.stage1.names.items()}
+        errors, warnings = check_classes(stage1, self.names, classes_yaml)
+        if errors:
+            raise ValueError("; ".join(errors))
+        for w in warnings:
+            log.warning("stage-1 model: %s", w)
         self.geo = geometry
         self.st = settings
         self.calibration = calibration
