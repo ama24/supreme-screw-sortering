@@ -40,8 +40,9 @@ class Step:
     title: str
     # built when the step starts: later steps depend on what earlier ones produced
     commands: Callable[[], list[list[str]]]
-    # (done, total) while the step runs, e.g. rendered scenes; None = count finished commands
-    progress: Callable[[], tuple[int, int]] | None = None
+    # (done, total) while the step runs, e.g. rendered scenes; None (or a None result) = count
+    # finished commands
+    progress: Callable[[], tuple[int, int] | None] | None = None
     # removed before the step runs (derived outputs that would otherwise go stale)
     clean: list[Path] = field(default_factory=list)
     # images worth showing for this step (may not exist yet)
@@ -155,6 +156,15 @@ def build_plan(recipe: Recipe, base: dict[str, Any] | None = None) -> Plan:
     def post_progress() -> tuple[int, int]:
         return _count(run_dir / "processed"), max(1, _count(run_dir / "scenes"))
 
+    def labels_progress() -> tuple[int, int] | None:
+        # the export writes every image to _images/<split>/ first and removes that folder when
+        # done; before and after (check, previews) the finished commands are counted instead
+        staging = dataset_dir / "_images"
+        if not staging.is_dir():
+            return None
+        written = sum(1 for d in staging.iterdir() if d.is_dir() for _ in d.iterdir())
+        return written, max(1, _count(run_dir / "processed"))
+
     def labels() -> list[list[str]]:
         mod = "screwsynth.labels.cli"
         ds = str(dataset_dir)
@@ -195,6 +205,7 @@ def build_plan(recipe: Recipe, base: dict[str, Any] | None = None) -> Plan:
             "labels",
             TITLES["labels"],
             labels,
+            progress=labels_progress,
             clean=[dataset_dir],
             previews=[dataset_dir / "preview_train.jpg", dataset_dir / "preview_val.jpg"],
         ),
