@@ -522,3 +522,18 @@ def test_failed_command_restarts_when_step_allows(base, no_env, tmp_path):
     assert runner.Runner(plan, on_line=lines.append).run()
     assert any("restarting (1/2)" in line for line in lines)
     assert any("resumed" in line for line in lines)
+
+
+def test_labels_progress_counts_exported_images(base):
+    plan = steps.build_plan(Recipe("lp"), base)
+    step = plan.step("labels")
+    assert step.progress() is None  # export not started: count finished commands
+    for k in range(5):
+        (plan.run_dir / "processed" / f"{k:06d}").mkdir(parents=True)
+        (plan.run_dir / "processed" / f"{k:06d}" / "meta.json").write_text("{}")
+    staging = plan.dataset_dir / "_images"
+    (staging / "train").mkdir(parents=True)
+    (staging / "val").mkdir()
+    for f in ("train/a.jpg", "train/b.jpg", "val/c.jpg"):
+        (staging / f).write_bytes(b"")
+    assert step.progress() == (3, 5)

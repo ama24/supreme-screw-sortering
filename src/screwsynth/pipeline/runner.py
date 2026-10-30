@@ -69,10 +69,8 @@ class Runner:
         out = {}
         for s in self.plan.steps:
             st = self.status["steps"][s.key]
-            if st["state"] == "running" and s.progress is not None:
-                out[s.key] = s.progress()
-            else:
-                out[s.key] = (st.get("commands_done", 0), st.get("commands_total", 0))
+            own = s.progress() if st["state"] == "running" and s.progress is not None else None
+            out[s.key] = own or (st.get("commands_done", 0), st.get("commands_total", 0))
         return out
 
     # ------------------------------------------------------------------ run
