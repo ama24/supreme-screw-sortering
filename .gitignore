@@ -44,3 +44,11 @@ data/rest_poses/*.png
 
 # NiceGUI local storage (GUI remembers the last recipe)
 .nicegui/
+
+# your surface photos for backgrounds (backgrounds.yaml, the list, stays tracked)
+data/plate/*.png
+data/plate/*.jpg
+data/plate/*.jpeg
+data/plate/*.tif
+data/plate/*.tiff
+data/plate/*.webp

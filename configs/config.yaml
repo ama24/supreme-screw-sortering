@@ -48,11 +48,11 @@ partgen:
 
 # 03 calibration — Pi Camera 3 intrinsics, extrinsics, sensor profile
 calibration:
-  board:
-    squares_x: 9
-    squares_y: 7
-    square_mm: 15.0          # nominal; the solver takes the MEASURED size via --square-mm
-    marker_mm: 11.0
+  board:                       # 198 x 144 mm: A4 landscape, and lies flat inside the 220 mm plate
+    squares_x: 11
+    squares_y: 8
+    square_mm: 18.0          # nominal; the solver takes the MEASURED size via --square-mm
+    marker_mm: 13.5
     dictionary: DICT_5X5_100
   target_rms_px: 0.5          # warn above this intrinsic reprojection RMS
   min_corners: 12             # reject views with fewer ChArUco corners
@@ -170,8 +170,15 @@ scenegen:
     roughness: [0.6, 0.9]
     bump_strength: [0.0, 0.15] # print lines
     line_pitch_mm: 0.4
-    solid_colour_probability: 0.1   # domain randomisation: solid plate colour instead of plate_empty.png
-    solid_colours: [[0.12, 0.35, 0.65], [0.15, 0.5, 0.25], [0.6, 0.15, 0.15], [0.5, 0.5, 0.5]]
+    # What the surface under the parts looks like: one source is drawn per scene by weight.
+    # Sources that are not available drop out (no calibration -> no calibrated photo; no images).
+    background_weights:
+      calibrated_photo: 0.6    # the calibrated camera's photo of the empty plate (plate_empty.png)
+      images: 0.2              # surface photos in paths.plate_dir (craft mat, table): GUI Background tab
+      colours: 0.2             # one of the solid colours below
+    colours:                   # sRGB hex (as colour pickers show it); add or remove freely
+      - {name: silicone_blue, hex: "#3A86D4"}   # silicone phone-repair mat
+    colour_jitter: 0.15        # +-15 % brightness of the solid colour per scene
   shroud:
     colour: [0.02, 0.02, 0.02]
     half_width_mm: 220
@@ -214,8 +221,27 @@ labels:
   min_instances_per_class: 3000
   val_real: null               # e.g. ../../real/val_real/images/val  (written as val_real in the yaml)
 
-# 08 train — stage 1, stage 2, measurement
-train: {}
+# 08 train — stage 1 and stage 2 training (experiments: configs/train/*.yaml)
+train:
+  runs_dir: runs               # training runs: runs/<stage>/<experiment> (generic training moves to model-trainer)
 
-# 09 realdata — real captures and sim-to-real
-realdata: {}
+# 08 measure — the trained models in use: detect, classify and measure (screwsynth-infer / -eval, the Pi)
+measure:
+  stage1_weights: null         # default for screwsynth-infer, e.g. runs/seg/stage1_nano/weights/best.pt
+  stage2_weights: null         # keypoint model; null = classical measurement only
+  infer:
+    conf: 0.25                 # stage-1 detection confidence
+    iou: 0.6
+    max_det: 300
+    pose_conf: 0.5             # keypoint confidence needed to trust method A (else method B)
+    border_px: 3               # masks within this of the ROI border: cut, not measurable
+    method: auto               # auto | keypoints | classical
+
+# rig — the Raspberry Pi side (screwrig package: camera, printer bed, capture sessions)
+rig:
+  printer:                     # homing/parking the bed before each capture (Pi side, USB serial)
+    port: null                 # e.g. /dev/ttyUSB0; null = do not move the printer
+    baud: 115200
+    park_y_mm: null            # null = only home Y (G28 Y); a number also parks Y there (G0 Y...)
+    feed_mm_min: 3000
+    timeout_s: 60

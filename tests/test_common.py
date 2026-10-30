@@ -17,7 +17,8 @@ TOOLS = [
     "postprocess",
     "labels",
     "train",
-    "realdata",
+    "measure",
+    "rig",
 ]
 
 
@@ -93,3 +94,10 @@ def test_seeds_are_deterministic():
     assert derive_seed(0, "scene", 1) == derive_seed(0, "scene", 1)
     assert derive_seed(0, "scene", 1) != derive_seed(0, "scene", 2)
     assert rng(3).random() == random.Random(3).random()
+
+
+def test_keep_awake_is_a_harmless_context():
+    from screwsynth.common.awake import keep_awake
+
+    with keep_awake("test") as active:
+        assert active in (True, False)

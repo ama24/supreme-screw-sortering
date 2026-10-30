@@ -330,3 +330,27 @@ def read_status(run_dir: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
     except (OSError, ValueError):
         return {}
+
+
+# what each exported dataset file is for (shown in the GUI's Run tab, with buttons to open/copy)
+OUTPUT_KINDS = {
+    "seg.yaml": "Stage 1 - segmentation: finds every part, its outline and its class. Train this first.",
+    "det.yaml": "Stage 1 - boxes only (no outlines): a lighter alternative to seg.yaml.",
+    "obb.yaml": "Stage 1 - rotated boxes: hugs long, tilted screws better than plain boxes.",
+    "pose.yaml": "Keypoints on the whole image (head top, bearing, tip of each screw).",
+    "crops.yaml": "Stage 2 - keypoints on close-up crops of single screws: the length measurement model.",
+}
+
+
+def dataset_outputs(dataset_dir: Path) -> list[tuple[str, Path, str]]:
+    """(label, path, what it is for) of every exported dataset file that exists."""
+    out = []
+    for name, text in OUTPUT_KINDS.items():
+        p = dataset_dir / name
+        if p.is_file():
+            out.append((name, p, text))
+    if (dataset_dir / "coco").is_dir():
+        out.append(
+            ("coco/", dataset_dir / "coco", "The same labels in COCO format (for other tools).")
+        )
+    return out

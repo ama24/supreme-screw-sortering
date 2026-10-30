@@ -374,6 +374,8 @@ async def test_gui_run_button_runs_plan(tmp_path, monkeypatch, base, no_env):
     monkeypatch.setattr(gui, "preflight", lambda plan: [])
     async with user_simulation(root=gui.page) as user:
         await user.open("/?recipe=runtest&tab=run")
+        await user.should_see("Outputs")
+        await user.should_see("No dataset exported yet")
         user.find(marker="run").click()
         for _ in range(100):
             if not gui.RUN.busy and gui.RUN.runner is not None:
@@ -384,3 +386,37 @@ async def test_gui_run_button_runs_plan(tmp_path, monkeypatch, base, no_env):
         await user.should_see("fake parts ran")  # streamed into the log
     st = read_json(steps.status_path(tmp_path / "out" / "runtest"))
     assert st["steps"]["parts"]["state"] == "done"
+
+
+@pytest.mark.anyio
+async def test_gui_background_colours(tmp_path, monkeypatch):
+    """Background tab: add a colour, then remove the default; the recipe keeps exactly that."""
+    pytest.importorskip("nicegui")
+    from nicegui import ui
+    from nicegui.testing.user_simulation import user_simulation
+
+    from screwsynth.pipeline import gui
+
+    monkeypatch.setattr(recipe, "recipes_dir", lambda: tmp_path)
+    monkeypatch.setattr(gui, "recipes_dir", lambda: tmp_path)
+    Recipe("bgtest").save(tmp_path / "bgtest.yaml")
+    async with user_simulation(root=gui.page) as user:
+        await user.open("/?recipe=bgtest&tab=background")
+        await user.should_see("Solid colours")
+        await user.should_see("silicone_blue")
+        user.find("Add colour").click()
+        await user.should_see("colour_2")
+        user.find(kind=ui.button, marker="remove-colour-0").click()
+        user.find(marker="save").click()
+    saved = recipe.load_recipe(tmp_path / "bgtest.yaml")
+    assert saved.config["scenegen"]["plate"]["colours"] == [{"name": "colour_2", "hex": "#808080"}]
+
+
+def test_dataset_outputs_explain_each_file(tmp_path):
+    assert steps.dataset_outputs(tmp_path) == []
+    for f in ("seg.yaml", "crops.yaml"):
+        (tmp_path / f).write_text("names: {}\n")
+    (tmp_path / "coco").mkdir()
+    out = steps.dataset_outputs(tmp_path)
+    assert [o[0] for o in out] == ["seg.yaml", "crops.yaml", "coco/"]
+    assert "Stage 1" in out[0][2] and "length" in out[1][2]

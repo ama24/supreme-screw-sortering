@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
-"""Capture with exactly the locked camera settings (refuses to run if they cannot be applied).
+"""Calibration captures with exactly the locked camera settings (refuses to run if they cannot be applied).
 
-  python3 capture.py --settings camera_settings.json --out captures/intrinsics --mode intrinsics --board board.json
-  python3 capture.py --settings camera_settings.json --out captures/extrinsic  --mode extrinsic
-  python3 capture.py --settings camera_settings.json --out captures/sensor     --mode sensor --frames 20
-  python3 capture.py --settings camera_settings.json --out captures/session1   --mode single --name img_0001
+  screwrig calib-capture --out captures/intrinsics --mode intrinsics --board board.json
+  screwrig calib-capture --out captures/extrinsic  --mode extrinsic
+  screwrig calib-capture --out captures/sensor     --mode sensor --frames 20
+  screwrig calib-capture --out captures/misc       --mode single --name img_0001
 
 Images are lossless PNG (BGR) with a JSON sidecar of the real frame metadata; --dng also saves raw.
 """
@@ -14,71 +13,14 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 import time
 from pathlib import Path
 
 import numpy as np
-from pi_common import (
-    FULL_RES,
-    Coverage,
-    controls_from_settings,
-    focus_metric,
-    save_capture,
-    settings_mismatch,
-)
 
-log = logging.getLogger("capture")
+from .camera import Camera, Coverage, focus_metric, save_capture
 
-
-class Camera:
-    def __init__(self, settings: dict) -> None:
-        from picamera2 import Picamera2
-
-        self.settings = settings
-        self.picam2 = Picamera2()
-        mode = settings.get("sensor_mode") or {}
-        cfg = self.picam2.create_still_configuration(
-            main={"size": tuple(settings.get("size", FULL_RES)), "format": "RGB888"},
-            raw={} if mode else None,
-            sensor={"output_size": tuple(mode["size"]), "bit_depth": mode["bit_depth"]}
-            if mode
-            else {},
-            buffer_count=2,
-        )
-        self.picam2.configure(cfg)
-        self.picam2.set_controls(controls_from_settings(settings))
-        self.picam2.start()
-        time.sleep(1.5)
-        self.verify()
-
-    def verify(self) -> None:
-        md = dict(self.picam2.capture_metadata())
-        md["size"] = list(self.settings.get("size", FULL_RES))
-        problems = settings_mismatch(self.settings, md)
-        if problems:
-            self.picam2.stop()
-            raise SystemExit(
-                "REFUSING TO CAPTURE: camera does not run with the locked settings:\n  "
-                + "\n  ".join(problems)
-            )
-
-    def grab(self, dng_path: Path | None = None) -> tuple[np.ndarray, dict]:
-        request = self.picam2.capture_request()
-        try:
-            img = request.make_array("main")
-            md = request.get_metadata()
-            if dng_path is not None:
-                request.save_dng(str(dng_path))
-        finally:
-            request.release()
-        problems = settings_mismatch(self.settings, md)
-        if problems:
-            raise SystemExit("settings drifted during capture: " + "; ".join(problems))
-        return img, md
-
-    def close(self) -> None:
-        self.picam2.stop()
+log = logging.getLogger("screwrig.capture")
 
 
 def _save(cam: Camera, out: Path, name: str, dng: bool, extra: dict | None = None) -> Path:
@@ -101,7 +43,7 @@ def mode_intrinsics(cam: Camera, out: Path, board_json: str | None, dng: bool) -
     sharp_ref: list[float] = []
     i = len(list(out.glob("view_*.png")))
     print(
-        "Intrinsic views: move/tilt the board (max ~15 deg) to cover the WHOLE frame, corners too."
+        "Intrinsic views: move/tilt the board (max ~10 deg) to cover the WHOLE frame, corners too."
     )
     print("Press Enter to capture, q + Enter to finish. Aim for 25-40 views.")
     while input("> ").strip().lower() != "q":
@@ -140,10 +82,7 @@ def mode_sensor(cam: Camera, out: Path, frames: int, dng: bool) -> None:
     _save(cam, out, "white", dng)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+def add_arguments(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--settings", default="camera_settings.json")
     ap.add_argument("--out", required=True)
     ap.add_argument(
@@ -156,8 +95,9 @@ def main() -> int:
     ap.add_argument("--name", default=None, help="file name for --mode single")
     ap.add_argument("--note", default="", help="operator note stored in the sidecar")
     ap.add_argument("--dng", action="store_true", help="also save the raw DNG")
-    args = ap.parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
+
+
+def run(args: argparse.Namespace) -> int:
     settings = json.loads(Path(args.settings).read_text())
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -176,7 +116,3 @@ def main() -> int:
     finally:
         cam.close()
     return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

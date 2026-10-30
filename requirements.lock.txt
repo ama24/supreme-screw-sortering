@@ -1,10 +1,12 @@
 # Exact package versions of the working environment ("lock file"), made with
-#   python -m pip freeze --exclude-editable > requirements.lock.txt
+#   python -m pip freeze --exclude-editable > requirements.lock.txt   (then put this header back)
 # Reproduce it with
 #   pip install -r requirements.lock.txt
 #   pip install -e . --no-deps
-# Made on Windows 10, Python 3.12.10. Blender comes from BlenderProc (4.2.1); PyTorch is not locked yet
-# (tool 08). Regenerate after deliberately upgrading a package, and commit it.
+# Made on Windows 10, Python 3.12.10. Blender comes from BlenderProc (4.2.1). PyTorch is the
+# CUDA 12.4 build (+cu124), served by the PyTorch index below. Regenerate after deliberately
+# upgrading a package.
+--extra-index-url https://download.pytorch.org/whl/cu124
 aiofiles==25.1.0
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.5
@@ -32,6 +34,7 @@ docutils==0.23
 ezdxf==1.4.5
 fastapi==0.162.0
 filelock==4.2.4
+flatbuffers==25.12.19
 fonttools==4.68.0
 frozenlist==1.8.0
 fsspec==2026.9.0
@@ -52,6 +55,7 @@ manifold3d==3.5.4
 markdown2==2.5.5
 MarkupSafe==3.0.3
 matplotlib==3.11.2
+ml_dtypes==0.6.0
 more-itertools==11.2.1
 mpmath==1.3.0
 msgpack==1.2.4
@@ -64,6 +68,9 @@ nodeenv==1.11.0
 numba==0.68.1
 numpy==2.5.4
 nvidia-ml-py==13.615.71
+onnx==1.23.2
+onnxruntime==1.31.1
+onnxslim==0.1.98
 opencv-contrib-python==5.0.0.93
 opencv-python==5.0.0.93
 opentelemetry-api==1.45.1
@@ -77,6 +84,7 @@ polars-runtime-32==2.1.0
 pre_commit==4.7.0
 progressbar==2.5
 propcache==0.5.4
+protobuf==7.36.2
 psutil==7.2.2
 pycocotools==2.0.11
 pydantic==2.14.1

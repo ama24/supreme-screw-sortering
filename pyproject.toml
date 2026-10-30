@@ -18,7 +18,8 @@ dependencies = [
 catalogue = ["ruamel.yaml>=0.18"]
 partgen = ["numpy>=1.24", "trimesh>=4.0", "manifold3d>=3.0", "pillow>=10.0", "networkx>=3.0", "scipy>=1.10"]
 calib = ["opencv-contrib-python>=4.8", "matplotlib>=3.7", "pillow>=10.0"]
-train = ["ultralytics>=8.3"]
+# install the CUDA build of PyTorch first (README step 5)
+train = ["ultralytics>=8.4", "onnx>=1.16", "onnxruntime>=1.18"]
 dev = ["pytest>=8.0", "ruff>=0.6", "pre-commit>=3.5", "ruamel.yaml>=0.18"]
 gui = ["nicegui>=3.0", "ruamel.yaml>=0.18", "pillow>=10.0"]
 # everything except training (PyTorch is large and needs the CUDA build, see README)
@@ -33,12 +34,17 @@ screwsynth-post = "screwsynth.postprocess.cli:main"
 screwsynth-labels = "screwsynth.labels.cli:main"
 screwsynth-dataset = "screwsynth.pipeline.cli:main"
 screwsynth-gui = "screwsynth.pipeline.cli:gui_entry"
+screwsynth-train = "screwsynth.train.cli:main"
+screwsynth-infer = "screwsynth.measure.cli:infer_main"
+screwsynth-eval = "screwsynth.measure.cli:eval_main"
+screwsynth-compare-measure = "screwsynth.measure.cli:compare_main"
+screwsynth-real = "screwsynth.realdata.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/screwsynth"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "rig/tests"]
 addopts = "-ra"
 markers = [
     "slow: needs Blender, a GPU, network or long runtimes (deselect with -m \"not slow\")",
@@ -47,11 +53,11 @@ markers = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-src = ["src", "tests"]
+src = ["src", "tests", "rig/src", "rig/tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "PTH"]
 ignore = ["E501"]  # line length is handled by `ruff format`; long strings are allowed
 
 [tool.ruff.lint.isort]
-known-first-party = ["screwsynth"]
+known-first-party = ["screwsynth", "screwrig"]

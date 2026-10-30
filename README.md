@@ -29,8 +29,8 @@ Project conventions are in [CLAUDE.md](CLAUDE.md). The build guide, with one pro
 | 05 | scenegen    | BlenderProc scene generation and rendering (RGB + instance mask + `meta.json`) | implemented (Blender run pending) |
 | 06 | postprocess | lens distortion (RGB and mask), noise, vignetting, compression | done |
 | 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays | done |
-| 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation | TODO |
-| 09 | realdata    | capture and label a real validation set, compare real vs synthetic | TODO |
+| 08 | train       | train stage 1 and stage 2, measurement, inference, evaluation | done (training runs pending) |
+| 09 | realdata    | capture and label a real validation set, compare real vs synthetic | done (first real session pending) |
 | –  | pipeline    | dataset builder: recipes, one-command runner (`screwsynth-dataset`), browser GUI (`screwsynth-gui`) | done |
 
 Each tool has code in `src/screwsynth/<tool>/` and docs in `tools/<tool>/README.md`.
@@ -147,7 +147,7 @@ Super with a current driver:
 
 ```bash
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-pip install -e ".[train]"
+pip install -e ".[train]"      # ultralytics, onnx, onnxruntime
 python -c "import torch; print(torch.__version__, torch.cuda.is_available())"   # must print True
 ```
 
@@ -160,23 +160,28 @@ python -c "import torch; print(torch.__version__, torch.cuda.is_available())"   
 | coacd | `pip install coacd` | Convex decomposition of STEP parts for collision. Otherwise a single convex hull is used. |
 | pycocotools | `pip install pycocotools` | COCO-style evaluation of the exported datasets |
 
-### 7. Raspberry Pi (tool 03 capture, tool 09)
+### 7. Raspberry Pi: the `screwrig` package
+
+This repository holds two Python packages:
+- **`screwsynth`** (repository root) runs on the PC: dataset creation, calibration solving, labelling and
+  measurement.
+- **`screwrig`** ([rig/](rig/)) runs on the Raspberry Pi: the locked camera, the printer bed and capture sessions. It
+  uses `screwsynth` for the shared parts (catalogue, config, measurement).
 
 On the Pi (Raspberry Pi OS Bookworm, Camera Module 3 connected):
 
 ```bash
 sudo apt update && sudo apt install -y python3-picamera2 python3-numpy git
-git clone https://github.com/ama24/supreme-screw-sortering.git
-cd supreme-screw-sortering/tools/calibration/pi
-python3 -m venv --system-site-packages ~/screwcam     # system packages: Picamera2 comes from apt
-source ~/screwcam/bin/activate
-pip install -r requirements.txt                       # OpenCV contrib (headless)
+git clone https://github.com/ama24/supreme-screw-sortering.git && cd supreme-screw-sortering
+python3 -m venv --system-site-packages ~/screwrig     # system packages: Picamera2 comes from apt
+source ~/screwrig/bin/activate
+pip install -r rig/requirements-pi.txt                # screwsynth + screwrig + OpenCV (headless)
 rpicam-hello --list-cameras                           # the IMX708 must be listed
+screwrig --help
 ```
 
-The Pi only needs the scripts in `tools/calibration/pi/`. Copy the captures to the PC with `scp` or `rsync` (see
-[tools/calibration/README.md](tools/calibration/README.md)). You can also install the whole package on the Pi
-(`pip install -e ".[calib]"`) and solve there.
+Copy the captures to the PC with `scp` or `rsync` (see [tools/calibration/README.md](tools/calibration/README.md)).
+Details: [rig/README.md](rig/README.md).
 
 ### 8. Check the installation
 
@@ -199,6 +204,12 @@ Commands installed by the package:
 | `blenderproc run tools/scenegen/generate.py`, `python tools/scenegen/batch.py` | 05: rendering |
 | `screwsynth-post` | 06: camera/sensor simulation, realism report |
 | `screwsynth-labels` | 07: dataset export, preview, check |
+| `screwsynth-train` | 08: train stage 1/2, fine-tune, learning curve, ONNX export (moving to [model-trainer](https://github.com/ama24/model-trainer)) |
+| `screwsynth-infer` | 08: photo → parts, sizes, lengths, plate positions (JSON + image) |
+| `screwsynth-eval` | 08: mAP, size confusion, length accuracy, sim-to-real gap |
+| `screwsynth-compare-measure` | 08: measurement method A (keypoints) vs B (classical) on true masks |
+| `screwsynth-real` | 09: sessions, inventory, pre-annotation, CVAT round trip, length matching, val_real, sim-to-real report |
+| `screwrig` (Pi) | 03/09: lock camera settings, calibration captures, session capture with homing/parking, printer status |
 
 ### Troubleshooting
 
@@ -232,6 +243,12 @@ screwsynth-gui            # opens http://localhost:8080 in your browser
 
 - **Dataset tab:** name, number of scenes, preview quality, seed, objects per scene, export formats.
 - **Camera tab:** nominal Pi Camera 3 values, or the calibration from tool 03 (with its status).
+- **Background tab:** what the surface under the parts looks like:
+  - your calibrated plate photo;
+  - your own surface photos (craft mat, bare table: upload them, then scale them by typing the real width or by
+    clicking two ruler marks);
+  - solid colours (add or remove them; the default is silicone repair-mat blue);
+  - and how often each is used.
 - **Parts tab:** tick families and sizes, set how often each finish appears, and see the number of classes and
   parts.
 - **All settings tab:** every setting of every tool, generated from `configs/config.yaml`. Hover a name for its

@@ -70,11 +70,27 @@ Runs are **resumable and deterministic**:
     than 0.1 px, the run stops.**
 - **World scale:** all geometry and translations are scaled by `world_scale` (Blender units = mm · 0.001 · 10).
   Metadata is written back in real mm.
-- **Plate:** a grid mesh at z = 0. Its UVs are the projection of each vertex into the ROI, so
-  `plate_empty.png` maps onto the plate perspective-correctly.
+- **Plate:** a grid mesh at z = 0, extending 30 mm past the visible area.
   - Roughness is randomised, with fine print-line bands as a bump.
-  - With `solid_colour_probability`, the plate gets a solid colour instead (domain randomisation).
   - Under it: a passive box collider, and the bed.
+- **Plate background.** Each scene draws one source by `plate.background_weights` (`scenegen/backgrounds.py`).
+  Unavailable sources drop out.
+  - **calibrated_photo:** the calibrated camera's photo of the empty plate (`plate_empty.png`). The plate's UVs are
+    each vertex's projection into the ROI, so the photo lands pixel-exact.
+  - **images:** photos of real surfaces (craft mat, bare table) in `paths.plate_dir` (`data/plate/`), listed in
+    `backgrounds.yaml` with their real **width in mm**.
+    - They are mapped in plate millimetres at true scale: rotate first, then scale (two Mapping nodes, so
+      non-square photos are not skewed).
+    - Each scene gets a random rotation and offset, and photos smaller than the plate are mirror-tiled without
+      seams.
+    - Add and scale them in the GUI's **Background** tab. It has a photo guide, plus a ruler tool: click two marks a
+      known distance apart.
+  - **colours:** one of `plate.colours` (`{name, hex}`, sRGB as colour pickers show it; default
+    `silicone_blue #3A86D4`, the silicone phone-repair mat), with ±`colour_jitter` brightness.
+  - **Post-processing:** tool 06 pulls the image towards the real plate colour (`postprocess.colour.match_plate`)
+    only when the source is the calibrated photo. A mat or a solid colour keeps its own colour.
+  - **Scale check:** a 300 mm grid photo with 10 mm cells, rendered rotated at 149° and 312°, measures 9.94 and
+    9.92 mm per cell in the renders (autocorrelation, ±1 px).
 - **Surroundings:** a dark matte shroud box encloses everything, so metal reflects the enclosure and the light
   rather than an open room. One rectangular area light panel acts as the diffuse LED panel.
 
@@ -215,7 +231,7 @@ Per object:
 | `discard.*` | move 30 mm, stack 25 mm, below 1 mm | Post-settle rejection |
 | `render.*` | OPTIX, 64 samples, threshold 0.02, OPTIX denoiser, scale 1.0, bounces 6/3/4/2, depth off | Cycles |
 | `preview.*` | 10 scenes, scale 0.25, 16 samples | `--preview` |
-| `plate.*` | thickness 1.75, grid 24, roughness, bump, line pitch, solid colours | Plate |
+| `plate.*` | thickness 1.75, grid 24, roughness, bump, line pitch, `background_weights` (photo 0.6 / images 0.2 / colours 0.2), `colours` (silicone blue), `colour_jitter` 0.15 | Plate and its background |
 | `shroud.*`, `lights.*` | | Enclosure and light panel ranges (power in Blender units at `world_scale` 10) |
 | `wear`, `materials` | | Wear probabilities and preset overrides (defaults in `scenegen/materials.py`) |
 
@@ -238,7 +254,8 @@ Record the results here; they could not be measured on the development PC:
 
 | samples | denoiser | scale | s/scene | notes |
 |---|---|---|---|---|
-| – | – | – | – | run the benchmark |
+| 32 | OPTIX | 1.0 | ~23 | 2560 × 2560, 30–40 parts, while another render shared the GPU (development PC, Oct 2026) |
+| 16 | OPTIX | 0.25 (preview) | ~3–4 per photo | clumped 70–90 parts |
 
 Rough guide:
 - Samples and resolution drive the time almost linearly.

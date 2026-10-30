@@ -24,6 +24,7 @@ from screwsynth.common.config import config_path
 from screwsynth.common.paths import resolve
 
 from . import parts as parts_mod
+from .background_tab import background_tab
 from .forms import Field, build_fields, coerce, config_comments, to_yaml_text
 from .recipe import (
     LABEL_FORMATS,
@@ -39,7 +40,15 @@ from .recipe import (
     set_path,
 )
 from .runner import Runner, tail
-from .steps import TITLES, Check, build_plan, latest_render, preflight, read_status
+from .steps import (
+    TITLES,
+    Check,
+    build_plan,
+    dataset_outputs,
+    latest_render,
+    preflight,
+    read_status,
+)
 
 log = logging.getLogger("screwsynth.pipeline.gui")
 
@@ -380,6 +389,7 @@ class BuilderPage:
         with ui.tabs().classes("w-full") as tabs:
             t_data = ui.tab("Dataset", icon="dataset")
             t_cam = ui.tab("Camera", icon="photo_camera")
+            t_bg = ui.tab("Background", icon="texture")
             t_parts = ui.tab("Parts", icon="category")
             t_set = ui.tab("All settings", icon="tune")
             t_run = ui.tab("Run", icon="play_arrow")
@@ -387,6 +397,7 @@ class BuilderPage:
         first = {
             "dataset": t_data,
             "camera": t_cam,
+            "background": t_bg,
             "parts": t_parts,
             "settings": t_set,
             "run": t_run,
@@ -396,6 +407,8 @@ class BuilderPage:
                 self.dataset_tab()
             with ui.tab_panel(t_cam):
                 self.camera_tab()
+            with ui.tab_panel(t_bg):
+                background_tab(self)
             with ui.tab_panel(t_parts):
                 self.parts_tab()
             with ui.tab_panel(t_set):
@@ -736,6 +749,14 @@ class BuilderPage:
                             "flat dense round"
                         )
                     self.checks = ui.column().classes("gap-1")
+                with ui.card().classes("w-full"):
+                    with ui.row().classes("items-center w-full"):
+                        ui.label("Outputs").classes("font-bold")
+                        ui.space()
+                        ui.button(icon="refresh", on_click=self.refresh_outputs).props(
+                            "flat dense round"
+                        )
+                    self.outputs = ui.column().classes("gap-1 w-full").mark("outputs")
             with ui.column().classes("grow gap-2 min-w-0"):
                 self.log = ui.log(max_lines=3000).classes("w-full h-96 text-xs")
                 with ui.row().classes("items-center w-full"):
@@ -760,7 +781,30 @@ class BuilderPage:
                             self.preview_images[key] = (img, empty)
         self.refresh_checks()
         self.refresh_previews()
+        self.refresh_outputs()
         self.show_status()
+
+    def refresh_outputs(self) -> None:
+        """Where the renders and the exported datasets are, with open/copy buttons."""
+        ed = self.ed
+        run_dir = ed.recipe.run_dir(ed.base)
+        ds = ed.recipe.dataset_dir(ed.base)
+        self.outputs.clear()
+        with self.outputs:
+            _output_row("Renders", run_dir, "Rendered and post-processed scenes.")
+            _output_row("Dataset folder", ds, "Everything the label export wrote.")
+            files = dataset_outputs(ds)
+            if not files:
+                ui.label("No dataset exported yet: run the Labels step.").classes(
+                    "text-xs text-grey-7"
+                )
+                return
+            ui.label(
+                "To train with model-trainer: Datasets > Import, and paste the path of a .yaml file "
+                "(Copy path). Each .yaml is a separate dataset for a different model."
+            ).classes("text-xs text-grey-8")
+            for name, path, text in files:
+                _output_row(name, path, text)
 
     def _toggle_step(self, key: str, on: bool) -> None:
         p = self.ed.recipe.pipeline
@@ -1015,3 +1059,41 @@ def main(port: int = 8080, show: bool = True) -> None:
         favicon="🔩",
         storage_secret="screw-synth-local",
     )
+
+
+def open_in_explorer(path: Path) -> None:
+    """Open a folder (or the folder holding a file) in the file manager of this computer."""
+    import os
+    import subprocess
+    import sys
+
+    target = path if path.is_dir() else path.parent
+    if not target.exists():
+        ui.notify(f"{target} does not exist yet", type="warning")
+        return
+    if sys.platform == "win32":
+        if path.is_file():
+            subprocess.Popen(["explorer", "/select,", str(path)])
+        else:
+            os.startfile(target)  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", str(target)])
+    else:
+        subprocess.Popen(["xdg-open", str(target)])
+
+
+def _output_row(label: str, path: Path, text: str) -> None:
+    exists = path.exists()
+    with ui.column().classes("w-full gap-0"):
+        with ui.row().classes("items-center w-full no-wrap gap-1"):
+            ui.label(label).classes("text-sm font-medium" + ("" if exists else " text-grey-6"))
+            ui.space()
+            ui.button(icon="folder_open", on_click=lambda p=path: open_in_explorer(p)).props(
+                "flat dense round size=sm"
+            ).tooltip("Open in the file explorer")
+            ui.button(
+                icon="content_copy",
+                on_click=lambda p=path: (ui.clipboard.write(str(p)), ui.notify(f"Copied {p}")),
+            ).props("flat dense round size=sm").tooltip("Copy the path")
+        ui.label(text).classes("text-xs text-grey-7")
+        ui.label(str(path)).classes("text-xs text-grey-6 break-all")
