@@ -409,14 +409,30 @@ class StaticScene:
         img = bpy.data.images[name]
         nodes["plate_bg"].image = img
         w_px, h_px = img.size
-        width = float(background["width_mm"]) * self.s  # Blender units
-        height = width * h_px / max(1, w_px)
+        m = bg.photo_mapping(
+            self.cam.visible_plate_rect(0.0),
+            background["rotation_deg"],
+            background["width_mm"],
+            h_px / max(1, w_px),
+            background["offset"],
+        )
+        background["centre_uv"] = [round(v, 4) for v in m["centre_uv"]]  # recorded in meta.json
+        background["fits"] = m["fits"]
+        # turn around the view centre: out = R (p - c) = R p - R c
+        a = math.radians(background["rotation_deg"])
+        cx, cy = (v * self.s for v in m["centre_mm"])
         rot = nodes["plate_bg_rot"]
-        rot.inputs["Rotation"].default_value = (0.0, 0.0, math.radians(background["rotation_deg"]))
+        rot.inputs["Rotation"].default_value = (0.0, 0.0, a)
+        rot.inputs["Location"].default_value = (
+            -(math.cos(a) * cx - math.sin(a) * cy),
+            -(math.sin(a) * cx + math.cos(a) * cy),
+            0.0,
+        )
+        # then to photo units (0..1 across the photo), centred on the chosen spot
         scale = nodes["plate_bg_scale"]
-        scale.inputs["Scale"].default_value = (1.0 / width, 1.0 / height, 1.0)
-        ox, oy = background["offset"]
-        scale.inputs["Location"].default_value = (ox, oy, 0.0)
+        w_bu, h_bu = (v * self.s for v in m["size_mm"])
+        scale.inputs["Scale"].default_value = (1.0 / w_bu, 1.0 / h_bu, 1.0)
+        scale.inputs["Location"].default_value = (*m["centre_uv"], 0.0)
 
     def jitter(self, rng: random.Random) -> dict[str, Any]:
         """Randomise lights and plate for one render; returns the parameters used."""

@@ -98,3 +98,36 @@ def test_width_from_ruler():
     assert bg.width_from_ruler(3000, (0, 0), (600, 800), 100) == pytest.approx(300.0)  # diagonal
     with pytest.raises(ValueError):
         bg.width_from_ruler(3000, (5, 5), (5, 5), 100)
+
+
+def test_photo_mapping_keeps_the_view_inside_and_uses_the_whole_photo():
+    """The view (a 220 mm square around (110, 110)) must land anywhere on a large photo, fully
+    inside it, whatever the rotation (it used to turn around the plate origin, a corner, so the
+    view mostly fell off the photo onto mirrored edges)."""
+    rect = (-5.0, -5.0, 225.0, 225.0)
+    rng = random.Random(0)
+    centres = []
+    for _ in range(2000):
+        rot = rng.uniform(0, 360)
+        m = bg.photo_mapping(rect, rot, 600.0, 400 / 600, [rng.random(), rng.random()])
+        assert m["fits"]
+        for corner in (
+            (rect[0], rect[1]),
+            (rect[2], rect[1]),
+            (rect[0], rect[3]),
+            (rect[2], rect[3]),
+        ):
+            u, v = bg.photo_uv(m, rot, corner)
+            assert -1e-9 <= u <= 1 + 1e-9 and -1e-9 <= v <= 1 + 1e-9
+        assert bg.photo_uv(m, rot, (110.0, 110.0)) == pytest.approx(m["centre_uv"])
+        centres.append(m["centre_uv"])
+    # the view centre visits every part of the photo (left/middle/right x bottom/middle/top)
+    cells = Counter((min(2, int(u * 3)), min(2, int(v * 3))) for u, v in centres)
+    assert set(cells) == {(i, j) for i in range(3) for j in range(3)}
+
+
+def test_photo_mapping_small_photo_repeats():
+    m = bg.photo_mapping((0, 0, 220, 220), 30.0, 150.0, 1.0, [0.2, 0.9])
+    assert not m["fits"] and m["centre_uv"] == pytest.approx((0.5, 0.5))  # centred: least overflow
+    assert bg.coverage(359, 238 / 359) == "straight only"
+    assert bg.coverage(400, 0.9) == "any angle" and bg.coverage(150, 1.0) == "too small"

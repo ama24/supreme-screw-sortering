@@ -256,7 +256,7 @@ def background_tab(page: Any) -> None:
                                 from .gui import thumb
 
                                 ui.image(thumb(path, 240)).classes("w-28")
-                                px_w = _image_width(path)
+                                px_w = _image_size(path)
                             else:
                                 ui.label("file missing").classes("w-28 text-negative text-xs")
                                 px_w = None
@@ -407,22 +407,36 @@ def background_tab(page: Any) -> None:
             ).props("accept=image/*").classes("w-full")
 
 
-def _image_width(path: Path) -> int | None:
+def _image_size(path: Path) -> tuple[int, int] | None:
     from PIL import Image
 
     try:
         with Image.open(path) as im:
-            return im.size[0]
+            return im.size
     except OSError:
         return None
 
 
-def _scale_text(px_w: int | None, width_mm: float) -> str:
-    if not px_w or width_mm <= 0:
+
+COVERAGE_TEXT = {
+    "any angle": "covers the view at any angle (no repeats)",
+    "straight only": "covers the view only when straight; turned scenes repeat it mirrored at the edges "
+    "(a photo of at least 311 mm in both directions covers every angle)",
+    "too small": "smaller than the view: always repeated mirrored (at least 220 mm, better 311 mm, avoids it)",
+}
+
+
+def _scale_text(size: tuple[int, int] | int | None, width_mm: float) -> str:
+    if isinstance(size, int):
+        size = (size, size)
+    if not size or width_mm <= 0:
         return f"{width_mm:g} mm wide"
-    ppm = px_w / width_mm
+    w_px, h_px = size
+    ppm = w_px / width_mm
     hint = "" if ppm >= 5 else " — low resolution, the camera sees ~11 px/mm"
-    return f"{width_mm:g} mm wide, {px_w} px: {ppm:.1f} px/mm{hint}"
+    height = width_mm * h_px / w_px
+    cover = COVERAGE_TEXT[bg.coverage(width_mm, h_px / w_px)]
+    return f"{width_mm:g} x {height:.0f} mm, {w_px} px: {ppm:.1f} px/mm{hint}. It {cover}."
 
 
 def _dist(clicks: list[tuple[float, float]]) -> float:
