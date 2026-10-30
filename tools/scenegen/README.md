@@ -73,7 +73,7 @@ Runs are **resumable and deterministic**:
 - **Plate:** a grid mesh at z = 0, extending 30 mm past the visible area.
   - Roughness is randomised, with fine print-line bands as a bump.
   - Under it: a passive box collider, and the bed.
-- **Plate background.** Each scene draws one source by `plate.background_weights` (`scenegen/backgrounds.py`).
+- **Plate background.** Each scene draws one of the sources switched on in `plate.background_enabled` (default: calibrated photo and solid colours on, surface photos off; uploading a photo in the GUI switches photos on and colours off), shared by `plate.background_weights` (`scenegen/backgrounds.py`).
   Unavailable sources drop out.
   - **calibrated_photo:** the calibrated camera's photo of the empty plate (`plate_empty.png`). The plate's UVs are
     each vertex's projection into the ROI, so the photo lands pixel-exact.
@@ -231,7 +231,7 @@ Per object:
 | `discard.*` | move 30 mm, stack 25 mm, below 1 mm | Post-settle rejection |
 | `render.*` | OPTIX, 64 samples, threshold 0.02, OPTIX denoiser, scale 1.0, bounces 6/3/4/2, depth off | Cycles |
 | `preview.*` | 10 scenes, scale 0.25, 16 samples | `--preview` |
-| `plate.*` | thickness 1.75, grid 24, roughness, bump, line pitch, `background_weights` (photo 0.6 / images 0.2 / colours 0.2), `colours` (silicone blue), `colour_jitter` 0.15 | Plate and its background |
+| `plate.*` | thickness 1.75, grid 24, roughness, bump, line pitch, `background_enabled` (photo on / images off / colours on), `background_weights` (photo 0.6 / images 0.2 / colours 0.2), `colours` (silicone blue), `colour_jitter` 0.15 | Plate and its background |
 | `shroud.*`, `lights.*` | | Enclosure and light panel ranges (power in Blender units at `world_scale` 10) |
 | `wear`, `materials` | | Wear probabilities and preset overrides (defaults in `scenegen/materials.py`) |
 

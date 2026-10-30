@@ -176,6 +176,10 @@ scenegen:
       calibrated_photo: 0.6    # the calibrated camera's photo of the empty plate (plate_empty.png)
       images: 0.2              # surface photos in paths.plate_dir (craft mat, table): GUI Background tab
       colours: 0.2             # one of the solid colours below
+    background_enabled:        # switch each source on/off; the weights share the scenes among those on
+      calibrated_photo: true
+      images: false            # switched on automatically when you upload a surface photo
+      colours: true
     colours:                   # sRGB hex (as colour pickers show it); add or remove freely
       - {name: silicone_blue, hex: "#3A86D4"}   # silicone phone-repair mat
     colour_jitter: 0.15        # +-15 % brightness of the solid colour per scene

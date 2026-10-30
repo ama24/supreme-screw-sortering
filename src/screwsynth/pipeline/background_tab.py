@@ -49,10 +49,61 @@ def background_tab(page: Any) -> None:
         calib_dir / "plate_empty.png"
     ).is_file() and ed.recipe.pipeline.camera == "calibration"
 
+    switches: dict[str, list[Any]] = {s: [] for s in bg.SOURCES}
+
+    def is_on() -> dict[str, bool]:
+        return bg.enabled(dict(get_path(ed.merged(), "scenegen.plate", {}) or {}))
+
+    def set_on(src: str, on: bool, notify: bool = True) -> None:
+        cur = is_on()
+        if cur[src] == on:
+            return
+        cur[src] = on
+        ed.set("scenegen.plate.background_enabled", cur)
+        for sw in switches[src]:  # keep every switch for this source in step
+            sw.set_value(on)
+        refresh_sources()
+        if (
+            notify
+            and not any(cur[s] for s in ("images", "colours"))
+            and not (have_photo and cur["calibrated_photo"])
+        ):
+            ui.notify(
+                "Every background is switched off: the renders fall back to the solid colours",
+                type="warning",
+            )
+
+    def switch(src: str, label: str = "") -> Any:
+        sw = ui.switch(label, value=is_on()[src], on_change=lambda e: set_on(src, bool(e.value)))
+        sw.mark(f"enable-{src}")
+        switches[src].append(sw)
+        return sw
+
     with ui.column().classes("w-full max-w-5xl gap-3"):
         # ------------------------------------------------------------------ sources
         with ui.card().classes("w-full"):
-            ui.label("Sources (one is drawn per scene, by weight)").classes("font-bold")
+            ui.label("Sources (switch them on/off; those on share the scenes by weight)").classes(
+                "font-bold"
+            )
+            sources_box = ui.column().classes("w-full gap-1")
+
+        pct_labels: dict[str, Any] = {}
+
+        def refresh_sources() -> None:
+            sources_box.clear()
+            with sources_box:
+                draw_sources()
+
+        def update_shares() -> None:
+            n = len(bg.usable_images(plate_dir, bg.load_library(plate_dir)))
+            share = bg.weights(
+                dict(get_path(ed.merged(), "scenegen.plate", {}) or {}), have_photo, n > 0
+            )
+            total = sum(share.values()) or 1
+            for s, lab in pct_labels.items():
+                lab.set_text(f"{share[s] / total:.0%} of scenes")
+
+        def draw_sources() -> None:
             weights = dict(ed.get("scenegen.plate.background_weights") or bg.DEFAULT_WEIGHTS)
             n_images = len(bg.usable_images(plate_dir, bg.load_library(plate_dir)))
             notes = {
@@ -68,9 +119,11 @@ def background_tab(page: Any) -> None:
                 + ("" if n_images else " — none yet, upload one below"),
                 "colours": "one of the solid colours below",
             }
+            on = is_on()
             for src in bg.SOURCES:
                 with ui.row().classes("w-full items-center no-wrap gap-3"):
-                    ui.label(src.replace("_", " ")).classes("w-40 font-medium")
+                    ui.switch(value=on[src], on_change=lambda e, s=src: set_on(s, bool(e.value)))
+                    ui.label(src.replace("_", " ")).classes("w-36 font-medium")
                     val = ui.label(f"{float(weights.get(src, 0)):.2f}").classes("w-10")
 
                     def put(e: Any, src: str = src, val: Any = val) -> None:
@@ -80,18 +133,26 @@ def background_tab(page: Any) -> None:
                         cur[src] = round(float(e.value), 2)
                         ed.set("scenegen.plate.background_weights", cur)
                         val.set_text(f"{float(e.value):.2f}")
+                        update_shares()
 
-                    ui.slider(
+                    sl = ui.slider(
                         min=0, max=1, step=0.05, value=float(weights.get(src, 0)), on_change=put
-                    ).classes("w-56")
+                    ).classes("w-48")
+                    sl.set_enabled(on[src])
+                    pct_labels[src] = ui.label().classes("w-24 text-xs")
                     ui.label(notes[src]).classes("text-xs text-grey-7")
             ui.label(
-                "Sources that are not available drop out; the others share the scenes."
+                "Sources that are off or not available drop out; the others share the scenes by weight."
             ).classes("text-xs text-grey-7")
+            update_shares()
+
+        refresh_sources()
 
         # ------------------------------------------------------------------ colours
         with ui.card().classes("w-full"):
-            ui.label("Solid colours").classes("font-bold")
+            with ui.row().classes("items-center"):
+                ui.label("Solid colours").classes("font-bold")
+                switch("colours", "use solid colours")
             ui.label(
                 "Saved in this recipe. The brightness varies a little per scene (colour jitter)."
             ).classes("text-xs text-grey-7")
@@ -164,7 +225,11 @@ def background_tab(page: Any) -> None:
 
         # ------------------------------------------------------------------ photos
         with ui.card().classes("w-full"):
-            ui.label(f"Surface photos (shared by all recipes: {plate_dir})").classes("font-bold")
+            with ui.row().classes("items-center"):
+                ui.label(f"Surface photos (shared by all recipes: {plate_dir})").classes(
+                    "font-bold"
+                )
+                switch("images", "use surface photos")
             with ui.expansion("How to take and scale a surface photo", icon="help").classes(
                 "w-full"
             ):
@@ -191,7 +256,7 @@ def background_tab(page: Any) -> None:
                                 from .gui import thumb
 
                                 ui.image(thumb(path, 240)).classes("w-28")
-                                px_w = _image_width(path)
+                                px_w = _image_size(path)
                             else:
                                 ui.label("file missing").classes("w-28 text-negative text-xs")
                                 px_w = None
@@ -324,6 +389,13 @@ def background_tab(page: Any) -> None:
                 items.append(bg.BackgroundImage(name, 300.0))
                 save(items)
                 draw_table()
+                if not is_on()["images"]:  # a new photo: use it, instead of the solid colours
+                    set_on("images", True, notify=False)
+                    set_on("colours", False, notify=False)
+                    ui.notify(
+                        "Surface photos switched on and solid colours off (switch colours back on to mix both)",
+                        type="info",
+                    )
                 ui.notify(
                     f"{name} added: now set its real width (or scale it with a ruler)", type="info"
                 )
@@ -335,22 +407,36 @@ def background_tab(page: Any) -> None:
             ).props("accept=image/*").classes("w-full")
 
 
-def _image_width(path: Path) -> int | None:
+def _image_size(path: Path) -> tuple[int, int] | None:
     from PIL import Image
 
     try:
         with Image.open(path) as im:
-            return im.size[0]
+            return im.size
     except OSError:
         return None
 
 
-def _scale_text(px_w: int | None, width_mm: float) -> str:
-    if not px_w or width_mm <= 0:
+
+COVERAGE_TEXT = {
+    "any angle": "covers the view at any angle (no repeats)",
+    "straight only": "covers the view only when straight; turned scenes repeat it mirrored at the edges "
+    "(a photo of at least 311 mm in both directions covers every angle)",
+    "too small": "smaller than the view: always repeated mirrored (at least 220 mm, better 311 mm, avoids it)",
+}
+
+
+def _scale_text(size: tuple[int, int] | int | None, width_mm: float) -> str:
+    if isinstance(size, int):
+        size = (size, size)
+    if not size or width_mm <= 0:
         return f"{width_mm:g} mm wide"
-    ppm = px_w / width_mm
+    w_px, h_px = size
+    ppm = w_px / width_mm
     hint = "" if ppm >= 5 else " — low resolution, the camera sees ~11 px/mm"
-    return f"{width_mm:g} mm wide, {px_w} px: {ppm:.1f} px/mm{hint}"
+    height = width_mm * h_px / w_px
+    cover = COVERAGE_TEXT[bg.coverage(width_mm, h_px / w_px)]
+    return f"{width_mm:g} x {height:.0f} mm, {w_px} px: {ppm:.1f} px/mm{hint}. It {cover}."
 
 
 def _dist(clicks: list[tuple[float, float]]) -> float:

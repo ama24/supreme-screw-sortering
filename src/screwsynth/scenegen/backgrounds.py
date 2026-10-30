@@ -22,6 +22,8 @@ LIBRARY = "backgrounds.yaml"
 SOURCES = ("calibrated_photo", "images", "colours")
 DEFAULT_COLOURS = [{"name": "silicone_blue", "hex": "#3A86D4"}]  # silicone phone-repair mat
 DEFAULT_WEIGHTS = {"calibrated_photo": 0.6, "images": 0.2, "colours": 0.2}
+# on/off switch per source (the GUI's switches); weights only share scenes among those on
+DEFAULT_ENABLED = {"calibrated_photo": True, "images": False, "colours": True}
 IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".webp")
 
 
@@ -157,6 +159,8 @@ def weights(plate: Mapping[str, Any], have_photo: bool, have_images: bool) -> di
     if raw is None:
         raw = DEFAULT_WEIGHTS
     w = {s: max(0.0, float(dict(raw).get(s, DEFAULT_WEIGHTS[s]))) for s in SOURCES}
+    on = enabled(plate)
+    w = {s: (v if on[s] else 0.0) for s, v in w.items()}
     if not have_photo:
         w["calibrated_photo"] = 0.0
     if not have_images:
@@ -164,6 +168,79 @@ def weights(plate: Mapping[str, Any], have_photo: bool, have_images: bool) -> di
     if sum(w.values()) <= 0:
         w["colours"] = 1.0  # always something to show
     return w
+
+
+def photo_mapping(
+    view_rect_mm: Sequence[float],
+    rotation_deg: float,
+    width_mm: float,
+    aspect: float,
+    offset: Sequence[float],
+) -> dict[str, Any]:
+    """How a surface photo is laid under the view (pure maths, used by the Blender scene).
+
+    The photo turns around the centre of the view (not the plate origin, which is a corner of the
+    working area), and the view is placed at a random spot of the photo where it fits entirely, so
+    every part of the photo is used and no mirror seams appear. Only when the photo is smaller than
+    the view does it repeat (mirrored).
+
+    view_rect_mm: (x0, y0, x1, y1) of the rendered plate area; aspect: photo height / width (px).
+    Returns the view centre (mm), the photo size (mm) and the photo coordinates (0..1) of the view
+    centre: plate point p maps to centre_uv + R(p - centre) / size.
+    """
+    x0, y0, x1, y1 = (float(v) for v in view_rect_mm)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    hx, hy = (x1 - x0) / 2, (y1 - y0) / 2
+    w = float(width_mm)
+    h = w * float(aspect)
+    a = math.radians(rotation_deg)
+    c, s = abs(math.cos(a)), abs(math.sin(a))
+    ext = (
+        (c * hx + s * hy) / w,
+        (s * hx + c * hy) / h,
+    )  # half extent of the turned view, 0..1 units
+    uv = []
+    for e, f in zip(ext, offset, strict=True):
+        f = min(max(float(f), 0.0), 1.0)
+        # fits: anywhere it stays inside; too short in this direction: centred, so the mirrored
+        # overflow is as small as possible and split evenly between both sides
+        uv.append(e + f * (1 - 2 * e) if e < 0.5 else 0.5)
+    return {
+        "centre_mm": (cx, cy),
+        "size_mm": (w, h),
+        "centre_uv": tuple(uv),
+        "fits": ext[0] <= 0.5 and ext[1] <= 0.5,
+    }
+
+
+def photo_uv(
+    mapping: Mapping[str, Any], rotation_deg: float, point_mm: Sequence[float]
+) -> tuple[float, float]:
+    """Photo coordinates of a plate point (what the shader computes), for checks and tests."""
+    a = math.radians(rotation_deg)
+    dx = point_mm[0] - mapping["centre_mm"][0]
+    dy = point_mm[1] - mapping["centre_mm"][1]
+    rx, ry = math.cos(a) * dx - math.sin(a) * dy, math.sin(a) * dx + math.cos(a) * dy
+    return (
+        mapping["centre_uv"][0] + rx / mapping["size_mm"][0],
+        mapping["centre_uv"][1] + ry / mapping["size_mm"][1],
+    )
+
+
+def coverage(width_mm: float, aspect: float, view_mm: float = 220.0) -> str:
+    """How well a photo covers a square view of `view_mm`: 'any angle' | 'straight only' | 'too small'."""
+    w, h = float(width_mm), float(width_mm) * float(aspect)
+    if min(w, h) >= view_mm * math.sqrt(2):
+        return "any angle"
+    if min(w, h) >= view_mm:
+        return "straight only"
+    return "too small"
+
+
+def enabled(plate: Mapping[str, Any]) -> dict[str, bool]:
+    """Which sources are switched on (scenegen.plate.background_enabled)."""
+    raw = dict(plate.get("background_enabled") or {})
+    return {s: bool(raw.get(s, DEFAULT_ENABLED[s])) for s in SOURCES}
 
 
 def choose(
@@ -185,7 +262,8 @@ def choose(
             "file": im.file,
             "width_mm": im.width_mm,
             "rotation_deg": rng.uniform(0, 360),
-            "offset": [rng.random(), rng.random()],  # in image widths/heights
+            # where the view sits on the photo: 0..1 across the positions where it fits
+            "offset": [rng.random(), rng.random()],
         }
     colours = colours_from_config(plate)
     name = rng.choice(sorted(colours))
