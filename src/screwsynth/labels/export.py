@@ -85,14 +85,24 @@ def split_layouts(
 ) -> dict[str, str]:
     """Deterministic split by layout (never splits one scene's objects/variants across sets)."""
     ids = sorted(set(layout_ids), key=lambda s: hashlib.sha256(f"{seed}/{s}".encode()).hexdigest())
-    names = list(fractions)
-    total = sum(fractions.values())
+    names = [n for n in fractions if fractions[n] > 0]
+    total = sum(fractions[n] for n in names)
+    counts = {n: round(len(ids) * fractions[n] / total) for n in names}
+    # small runs: rounding can leave a split empty (3 layouts at 90/10 -> 3/0), and a dataset
+    # without validation images cannot be trained: every split gets at least one layout, taken
+    # from the largest split, as long as there are enough layouts
+    if len(ids) >= len(names):
+        for n in names:
+            while counts[n] == 0:
+                donor = max(names, key=lambda m: counts[m])
+                counts[donor] -= 1
+                counts[n] += 1
+    counts[names[0]] += len(ids) - sum(counts.values())  # rounding remainder
     out, start = {}, 0
-    for k, name in enumerate(names):
-        n = len(ids) - start if k == len(names) - 1 else round(len(ids) * fractions[name] / total)
-        for lid in ids[start : start + n]:
+    for name in names:
+        for lid in ids[start : start + counts[name]]:
             out[lid] = name
-        start += n
+        start += counts[name]
     return out
 
 
