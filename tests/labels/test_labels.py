@@ -247,3 +247,15 @@ def test_check_compares_washers_with_filled_area():
     disc = math.pi * 60**2
     assert abs(insp._outer_area(ring > 0) - disc) / disc < 0.02
     assert ring.sum() / disc < 0.75  # the raw mask would fail the 0.8-1.2 band
+
+
+def test_split_never_leaves_validation_empty():
+    from screwsynth.labels.export import split_layouts
+
+    for n in (2, 3, 5, 9):
+        out = split_layouts([f"L{i}" for i in range(n)], {"train": 0.9, "val": 0.1}, seed=0)
+        assert len(out) == n and list(out.values()).count("val") == 1, n
+    one = split_layouts(["L0"], {"train": 0.9, "val": 0.1}, seed=0)
+    assert one == {"L0": "train"}  # a single layout cannot be split
+    big = split_layouts([f"L{i}" for i in range(1000)], {"train": 0.9, "val": 0.1}, seed=0)
+    assert list(big.values()).count("val") == 100
