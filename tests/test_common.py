@@ -16,7 +16,6 @@ TOOLS = [
     "scenegen",
     "postprocess",
     "labels",
-    "train",
     "measure",
     "rig",
 ]

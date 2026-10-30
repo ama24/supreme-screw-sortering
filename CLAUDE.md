@@ -60,7 +60,7 @@ the tool you are working on before changing it.
 | 05 | scenegen    | BlenderProc scene generation and rendering (RGB + instance mask + meta.json) |
 | 06 | postprocess | lens distortion (RGB and mask), noise, vignetting, compression |
 | 07 | labels      | export to YOLO seg/detect/pose/OBB and COCO, splits, preview overlays |
-| 08 | train, measure | train stage 1 and stage 2 (moving to model-trainer); measurement, inference, evaluation |
+| 08 | measure     | measurement, inference, evaluation (training: model-trainer, see tools/measure/TRAINING.md) |
 | 09 | realdata    | label a real validation set, compare real vs synthetic (capture: `screwrig` on the Pi) |
 
 The dataset builder (`src/screwsynth/pipeline`, `screwsynth-dataset` / `screwsynth-gui`) runs 01, 02, 04,

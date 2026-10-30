@@ -139,7 +139,12 @@ blenderproc quickstart     # first run downloads Blender 4.2 (~400 MB) and rende
   `blenderproc run tools/scenegen/generate.py --run preview --preview --nominal-camera` renders 10 small scenes
   into `output/preview/`.
 
-### 5. PyTorch + Ultralytics (tool 08: training)
+### 5. PyTorch + Ultralytics (tool 08: running the trained models)
+
+Training itself happens in [model-trainer](https://github.com/ama24/model-trainer); see
+[tools/measure/TRAINING.md](tools/measure/TRAINING.md) for the settings. This repository only needs Ultralytics to
+*use* the models (`screwsynth-infer`, `screwsynth-eval`, the real-data tool).
+
 
 Install the **CUDA build** of PyTorch first; a plain `pip install ultralytics` would pull in the CPU build. Pick
 the command for your CUDA version on [pytorch.org](https://pytorch.org/get-started/locally/). For an RTX 2070
@@ -204,7 +209,6 @@ Commands installed by the package:
 | `blenderproc run tools/scenegen/generate.py`, `python tools/scenegen/batch.py` | 05: rendering |
 | `screwsynth-post` | 06: camera/sensor simulation, realism report |
 | `screwsynth-labels` | 07: dataset export, preview, check |
-| `screwsynth-train` | 08: train stage 1/2, fine-tune, learning curve, ONNX export (moving to [model-trainer](https://github.com/ama24/model-trainer)) |
 | `screwsynth-infer` | 08: photo → parts, sizes, lengths, plate positions (JSON + image) |
 | `screwsynth-eval` | 08: mAP, size confusion, length accuracy, sim-to-real gap |
 | `screwsynth-compare-measure` | 08: measurement method A (keypoints) vs B (classical) on true masks |
