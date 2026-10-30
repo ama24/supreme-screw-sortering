@@ -225,10 +225,6 @@ labels:
   min_instances_per_class: 3000
   val_real: null               # e.g. ../../real/val_real/images/val  (written as val_real in the yaml)
 
-# 08 train — stage 1 and stage 2 training (experiments: configs/train/*.yaml)
-train:
-  runs_dir: runs               # training runs: runs/<stage>/<experiment> (generic training moves to model-trainer)
-
 # 08 measure — the trained models in use: detect, classify and measure (screwsynth-infer / -eval, the Pi)
 measure:
   stage1_weights: null         # default for screwsynth-infer, e.g. runs/seg/stage1_nano/weights/best.pt

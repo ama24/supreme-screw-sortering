@@ -93,7 +93,7 @@ screwsynth-infer --image capture.png --stage1 runs/seg/stage1_nano/weights/best.
 ### ONNX and CPU latency
 
 ```bash
-screwsynth-train export --weights runs/seg/stage1_nano/weights/best.pt --imgsz 1024
+# export in model-trainer (run page > Export > ONNX); it re-scores and times the model
 ```
 
 This writes the ONNX model and `<model>.latency.json`. Measured with onnxruntime on the development PC's
