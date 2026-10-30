@@ -50,6 +50,8 @@ class Step:
     parallel: int = 1
     # extra environment per lane, e.g. which GPU it uses
     lane_env: Callable[[int], dict[str, str]] | None = None
+    # restart a failed command this many times (only for commands that resume where they stopped)
+    retries: int = 0
 
 
 @dataclass
@@ -180,6 +182,7 @@ def build_plan(recipe: Recipe, base: dict[str, Any] | None = None) -> Plan:
             progress=render_progress,
             parallel=workers,
             lane_env=render_env,
+            retries=2,  # e.g. Blender out of memory; --resume skips the finished scenes
         ),
         "postprocess": Step(
             "postprocess",
@@ -316,11 +319,12 @@ def preflight(plan: Plan, min_free_gb: float = 6.0) -> list[Check]:
     return out
 
 
-# measured on the RTX 2070 Super, full resolution, 80-150 parts: one Blender render uses about
-# 2.1 GB of GPU memory and 3.2 GB of RAM while keeping the GPU only ~37 % busy (physics and scene
-# set-up run on the CPU), so several renders side by side use the card much better
-RENDER_VRAM_GB = 2.4  # per render, with some headroom
-RENDER_RAM_GB = 3.5
+# measured on the RTX 2070 Super, full resolution: one Blender render uses about 2.1 GB of GPU
+# memory and 3.2 GB of RAM with 80-150 parts while keeping the GPU only ~37 % busy (physics and
+# scene set-up run on the CPU), so several renders side by side use the card much better. Crowded
+# scenes (150-190 parts, several removal photos) need more: 3 renders on 8 GB ran out of memory
+RENDER_VRAM_GB = 3.2  # per render, with headroom for crowded scenes
+RENDER_RAM_GB = 5.0
 DESKTOP_VRAM_GB = 0.8  # left for the screen and other programs
 MAX_WORKERS = 8
 

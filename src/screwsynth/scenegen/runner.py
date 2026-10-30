@@ -410,7 +410,8 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                         break
                     victim = rrng.choice(free)
                     removed.append(victim["id"])
-                    kept.remove(victim)
+                    # by identity: list.remove() compares dicts, and their numpy arrays fail
+                    kept = [inst for inst in kept if inst is not victim]
                     objs.remove(victim["obj"])
                     bs.remove([victim["obj"]], [])
                     kept = _settle(kept, objs, parts, area, physics, discard_cfg, dropped, bs, s)

@@ -455,10 +455,10 @@ def test_dataset_outputs_explain_each_file(tmp_path):
 def test_auto_render_workers_follow_each_gpu():
     g = steps.GPU
     n, slots, why = steps.auto_render_workers([g(0, "RTX 2070 SUPER", 8.0)], free_gb=40, cores=16)
-    assert n == 3 and slots == [0, 0, 0] and "3 on RTX 2070 SUPER" in why
+    assert n == 2 and slots == [0, 0] and "2 on RTX 2070 SUPER" in why
     n, slots, _ = steps.auto_render_workers([g(0, "A", 8.0), g(1, "B", 12.0)], free_gb=64, cores=32)
-    assert n == 7 and slots[:4] == [0, 1, 0, 1]  # spread over both cards
-    assert steps.auto_render_workers([g(0, "A", 24.0)], free_gb=8, cores=32)[0] == 2  # RAM limit
+    assert n == 5 and slots[:4] == [0, 1, 0, 1]  # spread over both cards
+    assert steps.auto_render_workers([g(0, "A", 24.0)], free_gb=11, cores=32)[0] == 2  # RAM limit
     assert steps.auto_render_workers([g(0, "A", 24.0)], free_gb=99, cores=4)[0] == 2  # CPU limit
     assert steps.auto_render_workers([], free_gb=99, cores=32)[0] == 1
     assert steps.GPU(0, "small", 4.0).workers == 1
@@ -474,10 +474,10 @@ def test_parallel_render_plan(base, monkeypatch):
     r.pipeline.scenes, r.pipeline.chunk = 100, 200
     plan = steps.build_plan(r, base)
     step = plan.step("render")
-    assert step.parallel == 6
+    assert step.parallel == 4
     cmds = step.commands()
-    assert len(cmds) == 6 and {c[c.index("--scenes") + 1] for c in cmds} <= {"17", "15"}
-    assert [c[c.index("--worker") + 1] for c in cmds] == ["0", "1", "2", "3", "4", "5"]
+    assert len(cmds) == 4 and {c[c.index("--scenes") + 1] for c in cmds} == {"25"}
+    assert [c[c.index("--worker") + 1] for c in cmds] == ["0", "1", "2", "3"]
     assert step.lane_env(0) == {"CUDA_VISIBLE_DEVICES": "0"} and step.lane_env(1) == {
         "CUDA_VISIBLE_DEVICES": "1"
     }
@@ -508,3 +508,17 @@ def test_parallel_lane_failure_stops_new_work(base, no_env):
     assert not runner.Runner(plan, on_line=lambda line: None).run()
     st = read_json(steps.status_path(plan.run_dir))
     assert st["steps"]["render"]["state"] == "failed" and st["steps"]["render"]["returncode"] == 2
+
+
+def test_failed_command_restarts_when_step_allows(base, no_env, tmp_path):
+    flag = (tmp_path / "crashed").as_posix()
+    crash_once = _py(
+        f"import os, sys, pathlib; f = pathlib.Path({flag!r}); "
+        "print('resumed') if f.exists() else (f.touch(), sys.exit(3))"
+    )
+    plan = _plan(base, {"render": [crash_once, _py("print('ok')")]})
+    plan.steps[0].parallel, plan.steps[0].retries = 2, 2
+    lines: list[str] = []
+    assert runner.Runner(plan, on_line=lines.append).run()
+    assert any("restarting (1/2)" in line for line in lines)
+    assert any("resumed" in line for line in lines)
