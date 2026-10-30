@@ -417,7 +417,6 @@ def _image_size(path: Path) -> tuple[int, int] | None:
         return None
 
 
-
 COVERAGE_TEXT = {
     "any angle": "covers the view at any angle (no repeats)",
     "straight only": "covers the view only when straight; turned scenes repeat it mirrored at the edges "

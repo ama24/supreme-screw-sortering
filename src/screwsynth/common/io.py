@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,19 @@ def _json_default(obj: Any) -> Any:
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serialisable")
 
 
+def _replace(src: Path, dst: Path, tries: int = 40) -> None:
+    """os.replace, retried: on Windows it fails while another process (a parallel render, the GUI)
+    has the target open for a moment."""
+    for i in range(tries):
+        try:
+            src.replace(dst)
+            return
+        except PermissionError:
+            if i == tries - 1:
+                raise
+            time.sleep(0.05)
+
+
 def write_text(path: PathLike, text: str) -> None:
     """Write a text file atomically (UTF-8, LF line endings), creating parent directories."""
     path = Path(path)
@@ -33,7 +47,7 @@ def write_text(path: PathLike, text: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
-        Path(tmp).replace(path)
+        _replace(Path(tmp), path)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise

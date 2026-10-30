@@ -49,6 +49,12 @@ class RunArgs:
     nominal_camera: bool = False
     preview: bool = False
     benchmark: bool = False
+    # parallel renders: each worker keeps its own class-balance state and log (they would
+    # overwrite one shared file); None = the single, sequential renderer
+    worker: int | None = None
+
+    def suffix(self) -> str:
+        return "" if self.worker is None else f"_w{self.worker}"
 
 
 def git_commit() -> str:
@@ -205,7 +211,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
     scenes_dir.mkdir(parents=True, exist_ok=True)
     from screwsynth.common.log import setup_logging
 
-    setup_logging(cfg.get("logging.level", "INFO"), out / "log.txt")
+    setup_logging(cfg.get("logging.level", "INFO"), out / f"log{args.suffix()}.txt")
 
     render_cfg = dict(sg.get("render", {}) or {})
     scale = float(render_cfg.get("resolution_scale", 1.0))
@@ -248,7 +254,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
     missing = set(class_ids) - {p.class_name for p in infos}
     if missing:
         log.warning("classes without built assets/rest poses (not rendered): %s", sorted(missing))
-    state_path = out / "balance_state.json"
+    state_path = out / f"balance_state{args.suffix()}.json"
     sampler = BalancedSampler(
         infos,
         BalanceState.load(state_path),
@@ -268,7 +274,8 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
         "classes_hash": classes_doc.get("catalogue_hash"),
         "world_scale": ws,
     }
-    if not (out / "run_config.yaml").is_file() or not args.resume:
+    first = args.worker in (None, 0)  # parallel renders: one writer, the others would collide
+    if first and (not (out / "run_config.yaml").is_file() or not args.resume):
         write_yaml(out / "run_config.yaml", json.loads(json.dumps(run_cfg)))
 
     import blenderproc as bproc
