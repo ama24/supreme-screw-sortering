@@ -60,6 +60,10 @@ class BalancedSampler:
     """Favour under-represented classes: draw uniformly among the classes whose instance count is
     within `slack` of the current minimum (deficit sampling; keeps the spread across classes <= slack + 1).
 
+    Classes far behind the rest (e.g. added to the catalogue mid-run, starting at 0) catch up inside
+    mixed scenes: each draw comes from them with probability `catch_up_share`, otherwise from the
+    other classes as usual. Plain deficit sampling would fill whole scenes with the new class alone.
+
     Unknown parts (class UNKNOWN) are not balanced against the real classes: each draw is an unknown
     part with probability `unknown_fraction` (uniform over the unknown parts).
     """
@@ -71,6 +75,7 @@ class BalancedSampler:
         slack: int = 1,
         finish_weights: Mapping[str, float] | None = None,
         unknown_fraction: float = 0.0,
+        catch_up_share: float = 0.25,
     ) -> None:
         self.by_class: dict[str, list[PartInfo]] = {}
         self.unknown = [p for p in parts if p.class_name == UNKNOWN]
@@ -86,15 +91,31 @@ class BalancedSampler:
             self.state.counts.setdefault(c, 0)
         self.slack = max(0, int(slack))
         self.finish_weights = dict(finish_weights or {})
+        self.catch_up_share = min(1.0, max(0.0, float(catch_up_share)))
 
-    def candidates(self) -> list[str]:
-        if not self.classes:
+    def candidates(self, among: Sequence[str] | None = None) -> list[str]:
+        among = self.classes if among is None else among
+        if not among:
             return []
-        lo = min(self.state.counts[c] for c in self.classes)
-        return [c for c in self.classes if self.state.counts[c] <= lo + self.slack]
+        lo = min(self.state.counts[c] for c in among)
+        return [c for c in among if self.state.counts[c] <= lo + self.slack]
+
+    def behind(self) -> list[str]:
+        """Classes below the typical (median) count by more than the normal balancing spread
+        (slack + 1): never during normal balancing, and they stay behind until fully caught up."""
+        if not self.catch_up_share or len(self.classes) < 2:
+            return []
+        counts = sorted(self.state.counts[c] for c in self.classes)
+        limit = counts[len(counts) // 2] - (self.slack + 1)
+        return [c for c in self.classes if self.state.counts[c] < limit]
 
     def sample_class(self, rng: random.Random) -> str:
-        return rng.choice(self.candidates())
+        behind = self.behind()
+        if not behind:
+            return rng.choice(self.candidates())
+        if rng.random() < self.catch_up_share:
+            return rng.choice(self.candidates(behind))  # furthest behind first
+        return rng.choice(self.candidates([c for c in self.classes if c not in behind]))
 
     def sample_part(self, class_name: str, rng: random.Random) -> PartInfo:
         """Uniform over the class's enabled parts (i.e. over its lengths)."""

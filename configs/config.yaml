@@ -121,6 +121,7 @@ scenegen:
   area_margin_mm: 3.0          # keep footprints this far inside the visible working area
   max_place_tries: 60
   balance_slack: 1             # draw among classes with count <= min count + slack
+  catch_up_share: 0.25         # classes far behind (e.g. added mid-run) get this share of each scene's parts until caught up; 0 = off
   finish_weights: {}           # optional finish -> relative weight (default 1)
   unknown_fraction: 0.08       # share of parts that are unknown junk (class UNKNOWN, catalogue `unknown:`)
   variants_per_layout: 1       # extra lighting variants of the same arrangement

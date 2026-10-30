@@ -156,6 +156,45 @@ def test_sampler_recovers_from_imbalance_and_lengths_uniform():
     assert set(lengths) == {1.0, 2.0, 3.0, 4.0}
 
 
+def test_new_class_catches_up_inside_mixed_scenes():
+    # 20 classes at 800, then C20 is added to the catalogue (count 0)
+    state = BalanceState(counts={f"C{c:02d}": 800 for c in range(20)})
+    sampler = BalancedSampler(_parts(21), state=state, catch_up_share=0.25)
+    assert sampler.behind() == ["C20"]
+    cfg = {"few_fraction": 0, "crowded_fraction": 0, "objects": [60, 60]}
+    rng = random.Random(3)
+    new_per_scene = []
+    for _ in range(200):
+        plan = plan_scene(sampler, cfg, rng)
+        names = Counter(p.class_name for p, _ in plan.parts)
+        if sampler.behind():
+            new_per_scene.append(names["C20"])
+            assert len(names) >= 15  # the other classes stay mixed in
+        sampler.record([p.class_name for p, _ in plan.parts])
+    assert not sampler.behind()  # caught up
+    # about a quarter of every catch-up scene, never alone; ~800 instances at ~15 per scene
+    assert min(new_per_scene[:-1]) >= 2 and max(new_per_scene) <= 35
+    assert 12 <= sum(new_per_scene) / len(new_per_scene) <= 18
+    assert 45 <= len(new_per_scene) <= 75
+
+
+def test_catch_up_never_triggers_in_a_fresh_run():
+    sampler = BalancedSampler(_parts(), slack=1)
+    rng = random.Random(5)
+    for _ in range(500):
+        assert not sampler.behind()
+        part, _ = sampler.draw(rng)
+        sampler.record([part.class_name])
+
+
+def test_catch_up_off_keeps_pure_deficit_sampling():
+    state = BalanceState(counts={f"C{c:02d}": 800 for c in range(20)})
+    sampler = BalancedSampler(_parts(21), state=state, catch_up_share=0)
+    assert not sampler.behind()
+    rng = random.Random(0)
+    assert {sampler.draw(rng)[0].class_name for _ in range(30)} == {"C20"}
+
+
 def test_balance_state_persists(tmp_path):
     s = BalanceState(counts={"a": 3}, scenes=2)
     s.save(tmp_path / "b.json")
