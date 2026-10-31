@@ -22,6 +22,7 @@ from screwsynth.common.png import write_png
 from screwsynth.common.seed import derive_seed
 
 from . import camera as camera_mod
+from . import environments
 from .composition import BalancedSampler, BalanceState, parts_from_assets, plan_scene
 from .groundtruth import (
     discard_reason,
@@ -32,6 +33,13 @@ from .groundtruth import (
 )
 from .materials import pick_insert_finish, sample_material
 from .placement import ClumpSettings, convex_hull_2d, place, place_clumped, separation
+from .variation import (
+    CameraSettings,
+    EnvironmentSettings,
+    layout_environment,
+    layout_view,
+    view_envelope,
+)
 
 log = logging.getLogger("screwsynth.scenegen")
 
@@ -201,6 +209,7 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
             ("rest_poses_dir", "data/rest_poses"),
             ("calibration_dir", "data/calibration"),
             ("plate_dir", "data/plate"),
+            ("hdri_dir", "data/hdri"),
             ("output_dir", "output"),
             ("classes", "configs/classes.yaml"),
             ("catalogue", "configs/catalogue.yaml"),
@@ -241,6 +250,17 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
         )
     vis = cam.visible_plate_rect(-float(sg.get("area_margin_mm", 3.0)))
     area = (max(area[0], vis[0]), max(area[1], vis[1]), min(area[2], vis[2]), min(area[3], vis[3]))
+    # camera views and HDRI environments per layout (defaults: the rig camera, no environment)
+    views = CameraSettings.from_config(sg.get("camera"))
+    target = ((area[0] + area[2]) / 2, (area[1] + area[3]) / 2)
+    envelope = None if views.is_rig_view else view_envelope(cam, views, target)
+    env = EnvironmentSettings.from_config(sg.get("environment"))
+    hdris = environments.usable(paths["hdri_dir"]) if env.enabled else []
+    if env.enabled and not hdris:
+        log.warning(
+            "environment enabled but no HDRI files switched on in %s: rendering without one",
+            paths["hdri_dir"],
+        )
 
     classes_doc = read_yaml(paths["classes"])
     class_ids = {name: int(i) for i, name in classes_doc["names"].items()}
@@ -271,6 +291,8 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
         "git_commit": git_commit(),
         "config": cfg.to_dict(),
         "camera": cam.to_json(),
+        "camera_views": views.to_json(),
+        "environment": {"enabled": bool(hdris), "files": hdris},
         "area_mm": list(area),
         "classes_hash": classes_doc.get("catalogue_hash"),
         "world_scale": ws,
@@ -285,7 +307,9 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
     bs.init_renderer(render_cfg)
     bs.set_camera(cam, ws)
     bs.check_camera(cam, ws)
-    static = bs.StaticScene(cam, sg, paths["calibration_dir"], ws, paths["plate_dir"])
+    static = bs.StaticScene(
+        cam, sg, paths["calibration_dir"], ws, paths["plate_dir"], envelope, bool(hdris)
+    )
     library = bs.AssetLibrary(paths["assets_dir"], ws)
     parts: dict[str, Part] = {}
     physics = dict(sg.get("physics", {}) or {})
@@ -302,8 +326,6 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
             bounds, float(lip.get("height_mm", 6.0)), float(lip.get("thickness_mm", 5.0))
         )
     on_plate_mm = float(sg.get("on_plate_mm", 0.3))
-    px_mm = _px_per_mm(cam, area)
-    occlusion_min_px = max(1, round(float(sg.get("occlusion_min_mm2", 0.5)) * px_mm**2))
     removal_range = tuple(int(x) for x in sg.get("removal_steps", (0, 0)))
     done_dir = out / "layouts_done"
     done_dir.mkdir(exist_ok=True)
@@ -323,6 +345,15 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
         t0 = time.perf_counter()
         timing: dict[str, float] = {}
         rng = random.Random(derive_seed(args.seed, "scene", idx))
+        # one camera (and environment) per layout: the picker's photos are taken from the same spot
+        view = layout_view(cam, views, target, idx, args.seed)
+        vcam = view.camera
+        if not view.rig_view:
+            bs.set_camera(vcam, ws)
+            bs.check_camera(vcam, ws)
+        environment = layout_environment(hdris, env, idx, args.seed)
+        px_mm = _px_per_mm(vcam, area)
+        occlusion_min_px = max(1, round(float(sg.get("occlusion_min_mm2", 0.5)) * px_mm**2))
         rrng = random.Random(derive_seed(args.seed, "removals", idx))
         removals = rrng.randint(*removal_range) if removal_range[1] > 0 else 0
         objs, mats = [], []
@@ -422,13 +453,27 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                     part = parts[inst["info"].id]
                     pieces = [transform_points(inst["T"], q) for q in part.pieces]
                     shapes[inst["id"]] = (
-                        silhouette_area(cam, pieces),
-                        silhouette_mask(cam, pieces),
+                        silhouette_area(vcam, pieces),
+                        silhouette_mask(vcam, pieces),
                         float(transform_points(inst["T"], part.verts)[:, 2].min()),
                     )
                 for v in range(variants):
                     name = scene_name(idx, r, v)
-                    light = static.jitter(random.Random(derive_seed(args.seed, "light", idx, v)))
+                    light = static.jitter(
+                        random.Random(derive_seed(args.seed, "light", idx, v)),
+                        vcam,
+                        view.rig_view,
+                    )
+                    if environment is not None:
+                        bs.set_environment(
+                            paths["hdri_dir"] / environment["file"],
+                            environment["strength"],
+                            environment["rotation_deg"],
+                        )
+                        light["environment"] = dict(environment)
+                        if not env.panel_light:
+                            static.light.set_energy(0.0)
+                            light["light_energy_w"] = 0.0
                     rgb, seg, dep = bs.render(bool(render_cfg.get("depth", False)))
                     objects = []
                     for inst in kept:
@@ -444,7 +489,8 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                                 T_plate=inst["T"],
                                 rest_pose_index=inst["pose"],
                                 measurable_tilt_deg=measurable_tilt,
-                                cam=cam,
+                                cam=vcam,
+                                rig_view=view.rig_view,
                                 instance=seg,
                                 alone_area=area_px,
                                 window=window,
@@ -480,7 +526,8 @@ def run(args: RunArgs, cfg: Config) -> dict[str, Any]:
                             "units": "mm",
                             "image": "rgb.png",
                             "instance_mask": "instance.png",
-                            "camera": cam.to_json(),
+                            "camera": vcam.to_json(),
+                            "camera_view": view.to_json(),
                             "world_scale": ws,
                             "area_mm": list(area),
                             "lighting": light,

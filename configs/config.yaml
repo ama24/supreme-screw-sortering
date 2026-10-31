@@ -18,6 +18,7 @@ paths:
   classes: configs/classes.yaml
   calibration_dir: data/calibration
   plate_dir: data/plate
+  hdri_dir: data/hdri          # HDRI environments (.hdr/.exr), shared by all recipes: GUI Environment tab
   assets_dir: data/assets
   rest_poses_dir: data/rest_poses
   real_dir: data/real
@@ -131,6 +132,22 @@ scenegen:
     pixel_size_um: 1.4
     resolution: [4608, 2592]
     height_mm: 300
+  # Camera view per layout. Each setting is one value (fixed) or a range [min, max]; ranges are
+  # covered evenly (also when you stop early or add layouts later). The defaults are the rig's own
+  # view. Images from any other view are marked not measurable (length measurement needs the rig view).
+  camera:
+    height_mm: calibrated      # calibrated = the camera's own height; or one value (350) or a range [250, 400]
+    tilt_deg: 0                # 0 = straight down; or one value (20) or a range [0, 30] (tilt from vertical)
+    tilt_direction_deg: [0, 360] # side the camera tilts from (plate frame, 0 = +x, 90 = +y); only with tilt > 0
+    roll_deg: 0                # image rotation around the view axis; or one value or a range [0, 360]
+  # HDRI environment (a 360-degree photo of a room) around the scene: lights the parts and shows in
+  # their reflections. Off by default. Uses only the files in paths.hdri_dir (offline). When on, the
+  # shroud is left out (open room) and every layout gets one HDRI, each file used equally often.
+  environment:
+    enabled: false             # true = an HDRI per layout (needs files in paths.hdri_dir)
+    strength: [0.3, 1.5]       # brightness; one value or a range (covered evenly)
+    rotation_deg: [0, 360]     # turns the environment; one value or a range (covered evenly)
+    panel_light: true          # keep the LED panel on as well (false = the HDRI is the only light)
   physics:
     drop_mm: 0.05              # start this far above the rest pose
     stack_clearance_mm: 0.5    # parts on top start this far above the parts below

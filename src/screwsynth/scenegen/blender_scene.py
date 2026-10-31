@@ -230,11 +230,21 @@ class StaticScene:
         calib_dir: Path,
         world_scale: float,
         plate_dir: Path | None = None,
+        envelope: Mapping[str, Any] | None = None,
+        open_room: bool = False,
     ) -> None:
+        """envelope: what the varied camera views can see (variation.view_envelope), or None for
+        the rig camera only; the plate and the shroud then grow to cover every view. open_room:
+        no shroud (an HDRI environment lights the scene instead)."""
         self.cfg, self.cam, self.ws = cfg, cam, world_scale
         self.s = 0.001 * world_scale
         pc = cfg.get("plate", {}) or {}
         x0, y0, x1, y1 = cam.visible_plate_rect(30.0)
+        self.centre = ((x0 + x1) / 2, (y0 + y1) / 2)  # the rig view's centre: lights stay over it
+        if envelope is not None:
+            ex0, ey0, ex1, ey1 = envelope["rect"]
+            x0, y0 = min(x0, ex0 - 30), min(y0, ey0 - 30)
+            x1, y1 = max(x1, ex1 + 30), max(y1, ey1 + 30)
         self.rect = (x0, y0, x1, y1)
         self.plate = self._plate_mesh(x0, y0, x1, y1, int(pc.get("grid", 24)))
         self.texture = None
@@ -281,6 +291,10 @@ class StaticScene:
         hw = float(sc.get("half_width_mm", 220.0))
         hh = float(sc.get("height_mm", 420.0))
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+        if envelope is not None:  # every camera position and the whole plate inside the shroud
+            reach = max(abs(x0 - cx), abs(x1 - cx), abs(y0 - cy), abs(y1 - cy))
+            hw = max(hw, reach + 10.0, float(envelope["max_offset_mm"]) + 60.0)
+            hh = max(hh, float(envelope["max_height_mm"]) + 80.0)
         self.shroud = bproc.object.create_primitive("CUBE")
         self.shroud.set_scale([hw * self.s, hw * self.s, hh / 2 * self.s])
         self.shroud.set_location([cx * self.s, cy * self.s, (hh / 2 - 20) * self.s])
@@ -289,6 +303,8 @@ class StaticScene:
         smat.set_principled_shader_value("Roughness", 0.9)
         self.shroud.replace_materials(smat)
         self.shroud.set_cp("category_id", 0)
+        if open_room:
+            self.shroud.hide(True)
         self.light = bproc.types.Light("AREA", name="panel")
         self.light.blender_obj.data.shape = "RECTANGLE"
         self.world_strength = 0.0
@@ -410,7 +426,7 @@ class StaticScene:
         nodes["plate_bg"].image = img
         w_px, h_px = img.size
         m = bg.photo_mapping(
-            self.cam.visible_plate_rect(0.0),
+            self.view.visible_plate_rect(0.0),
             background["rotation_deg"],
             background["width_mm"],
             h_px / max(1, w_px),
@@ -434,8 +450,16 @@ class StaticScene:
         scale.inputs["Scale"].default_value = (1.0 / w_bu, 1.0 / h_bu, 1.0)
         scale.inputs["Location"].default_value = (*m["centre_uv"], 0.0)
 
-    def jitter(self, rng: random.Random) -> dict[str, Any]:
-        """Randomise lights and plate for one render; returns the parameters used."""
+    def jitter(
+        self, rng: random.Random, view: RenderCamera | None = None, rig_view: bool = True
+    ) -> dict[str, Any]:
+        """Randomise lights and plate for one render; returns the parameters used.
+
+        view: the camera of this layout (default: the rig camera). Away from the rig view the
+        calibrated empty-plate photo does not fit (it is the rig camera's picture), so another
+        background is used, and the light panel stays above the camera so it never blocks the view.
+        """
+        self.view = view or self.cam
         pc = self.cfg.get("plate", {}) or {}
         lc = self.cfg.get("lights", {}) or {}
         rough = rng.uniform(*pc.get("roughness", [0.6, 0.9]))
@@ -443,14 +467,15 @@ class StaticScene:
         nodes = bpy.data.materials[self.plate_mat_name].node_tree.nodes
         _set(nodes["plate_bsdf"], ["Roughness"], rough)
         _set(nodes["plate_bump"], ["Strength"], bump)
-        background = bg.choose(pc, self.images, self.texture is not None, rng)
+        background = bg.choose(pc, self.images, self.texture is not None and rig_view, rng)
         self._show_background(nodes, background)
         size = rng.uniform(*lc.get("panel_size_mm", [250, 400]))
         height = rng.uniform(*lc.get("height_mm", [320, 380]))
+        if not rig_view:
+            height = max(height, float(self.view.centre_in_plate[2]) + 30.0)
         off = lc.get("offset_mm", [0, 40])
         r, a = rng.uniform(*off), rng.uniform(0, 2 * math.pi)
-        x0, y0, x1, y1 = self.rect
-        cx, cy = (x0 + x1) / 2 + r * math.cos(a), (y0 + y1) / 2 + r * math.sin(a)
+        cx, cy = self.centre[0] + r * math.cos(a), self.centre[1] + r * math.sin(a)
         energy = rng.uniform(*lc.get("energy_w", [40, 120]))
         temp = rng.uniform(*lc.get("colour_temperature_k", [5000, 6500]))
         col = _kelvin_rgb(temp)
@@ -477,6 +502,29 @@ class StaticScene:
             "world_strength": world,
             "exposure_ev": exposure,
         }
+
+
+def set_environment(path: Path, strength: float, rotation_deg: float) -> None:
+    """HDRI environment around the scene (lights it and shows in reflections).
+
+    One texture node, reused for every layout (BlenderProc's own helper adds a new node per call);
+    the image is loaded once per file.
+    """
+    nt = bpy.context.scene.world.node_tree
+    background = next(n for n in nt.nodes if n.type == "BACKGROUND")
+    tex = nt.nodes.get("env_tex")
+    if tex is None:
+        tex = nt.nodes.new("ShaderNodeTexEnvironment")
+        tex.name = "env_tex"
+        coord = nt.nodes.new("ShaderNodeTexCoord")
+        mapping = nt.nodes.new("ShaderNodeMapping")
+        mapping.name = "env_rot"
+        nt.links.new(coord.outputs["Generated"], mapping.inputs["Vector"])
+        nt.links.new(mapping.outputs["Vector"], tex.inputs["Vector"])
+    tex.image = bpy.data.images.load(str(path), check_existing=True)
+    nt.nodes["env_rot"].inputs["Rotation"].default_value = (0.0, 0.0, math.radians(rotation_deg))
+    nt.links.new(tex.outputs["Color"], background.inputs["Color"])
+    background.inputs["Strength"].default_value = float(strength)
 
 
 def _factor(node) -> Any:

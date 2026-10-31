@@ -360,7 +360,8 @@ def test_blender_smoke(tmp_path):
     cfg = tmp_path / "config.yaml"
     base = (repo_root() / "configs" / "config.yaml").read_text(encoding="utf-8")
     cfg.write_text(
-        base.replace("paths:\n", f"paths:\n  output_dir: {tmp_path.as_posix()}\n", 1),
+        # replace the key itself: a second output_dir would lose (in YAML the last one wins)
+        base.replace("  output_dir: output\n", f"  output_dir: {tmp_path.as_posix()}\n", 1),
         encoding="utf-8",
     )
     r = subprocess.run(
@@ -500,6 +501,10 @@ def test_occluders_free_and_measurable():
     assert covered["occluded_by"] == [2] and not covered["free"] and not covered["measurable"]
     clear = object_meta(instance=(instance == 1).astype(np.uint16), **common)
     assert clear["free"] and clear["measurable"] and clear["support"] == "plate"
+    assert 0 <= clear["view_angle_deg"] < 30
+    # the same part seen from any other camera view: never measured (needs the rig view)
+    other_view = object_meta(instance=(instance == 1).astype(np.uint16), rig_view=False, **common)
+    assert other_view["free"] and not other_view["measurable"]
     on_parts = object_meta(instance=(instance == 1).astype(np.uint16), lowest_z_mm=3.0, **common)
     assert on_parts["support"] == "parts" and not on_parts["measurable"]
     # physically covered (from the 3D poses) is not free, even if nothing shows over it
