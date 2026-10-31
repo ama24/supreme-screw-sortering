@@ -33,6 +33,7 @@ On the PC (for tests or development): `pip install -e . -e rig/`. OpenCV comes f
 | `screwrig lock --out camera_settings.json` | Lets exposure and white balance settle, freezes them, runs a focus sweep, and saves the locked settings. Run it once per rig change. |
 | `screwrig calib-capture --mode intrinsics\|extrinsic\|sensor\|single --out <dir>` | Calibration captures with the locked settings. It refuses to run if the camera does not apply them exactly. |
 | `screwrig capture --session s01 --settings camera_settings.json [--recheck]` | Real-data session. Each Enter homes/parks the bed and saves a photo plus sidecar into `data/real/s01/images`. Create the session first with `screwsynth-real session new`. |
+| `screwrig detect` | Loads the model once; each Enter: countdown, photo, segmentation. The result page `http://<pi>:8000` (open it in the PC's browser) always shows the latest picture with outlines and the list of parts. Files `det_0001…` in `data/real/detect`, numbering continues across runs. |
 | `screwrig printer park\|status` | Homes Y (and parks it, if configured), then reports the position |
 
 ## Run the trained model
@@ -44,19 +45,21 @@ On the PC (for tests or development): `pip install -e . -e rig/`. OpenCV comes f
    ```powershell
    scp -r "<package folder>" pi@screwrig.local:~/supreme-screw-sortering/models/stage1
    ```
-3. **Photo and detection:**
+3. **Photo and detection, one command:**
    ```bash
    source ~/screwrig/bin/activate && cd ~/supreme-screw-sortering
-   mkdir -p data/real/test
-   rpicam-still -o data/real/test/plate_001.jpg --width 4608 --height 2592 --immediate
-   screwsynth-infer --image data/real/test/plate_001.jpg        --stage1 models/stage1/exports/ncnn_fp32/best_ncnn_model --nominal-camera --show
+   screwrig detect --nominal-camera
    ```
-   It writes `plate_001_vis.jpg` (outlines, classes, lengths, and the number of objects at the top left) and
-   `plate_001_result.json` next to the photo, and `--show` opens the picture in the image viewer. That needs the
-   Pi's desktop: run it in a terminal on the Pi itself. Over SSH there is no screen, so it only writes the file
-   (copy it to the PC with `scp`).
-   Leave out `--nominal-camera` once `data/calibration/calibration.json` exists. Add `--stage2
-   models/stage2/...` for the keypoint model; without it, lengths come from the classical edge method.
+   It prints the address of the result page (e.g. `http://192.168.1.42:8000/`); open it in the PC's browser and
+   leave it open. Then press **Enter** in the terminal for every photo: a 3 s countdown (`--countdown`), the photo
+   ("photo taken, you can let go"), and the analysis. The page updates by itself. `q` quits.
+   - The model is the newest one in `models/` (an NCNN export first), or `--stage1 <path>`.
+   - Photos and results go to `data/real/detect/det_NNNN.jpg`, `_vis.jpg`, `_result.json`.
+   - With `--settings camera_settings.json` (from `screwrig lock`) it uses the locked camera; without it, the
+     automatic one (`rpicam-still`).
+   - Leave out `--nominal-camera` once `data/calibration/calibration.json` exists.
+
+   For a single photo file: `screwsynth-infer --image <photo> --stage1 <model> --nominal-camera --save-vis`.
 
 ## Printer safety
 
