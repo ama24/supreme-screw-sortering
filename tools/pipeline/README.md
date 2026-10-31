@@ -86,6 +86,11 @@ screwsynth-gui [--port 8080] [--no-browser]
   - a comment like `a | b | c` turns a text field into a choice.
 
   New keys in config.yaml therefore appear without any GUI change.
+- **Camera tab, "Camera views per layout":** each view setting (height, tilt, tilt direction, image
+  rotation) as a fixed value or a range; "Back to the rig view" restores the defaults.
+- **Environment tab:** switch HDRI environments on, set strength and rotation (fixed or range), add `.hdr` /
+  `.exr` files from a folder (copied to `paths.hdri_dir`), see a preview of each, switch files on or off,
+  delete them. Links to free HDRI sites are in the tab; nothing is downloaded by the tool.
 
 ## Tests
 

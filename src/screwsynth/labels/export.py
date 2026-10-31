@@ -6,6 +6,7 @@ import csv
 import hashlib
 import json
 import logging
+import math
 import os
 import shutil
 from collections import Counter, defaultdict
@@ -286,6 +287,8 @@ def export(
         "per_size": Counter(),
         "per_length": Counter(),
         "dropped": 0,
+        "views": {k: Counter() for k in VIEW_BINS},
+        "view_angle_per_class": defaultdict(Counter),
     }
     dropped_all, sources, crop_rows = [], [], []
     groups: list[tuple[str, str, str]] = []
@@ -330,6 +333,9 @@ def export(
                 "\n".join(lines[f]) + ("\n" if lines[f] else ""),
             )
         stats["images"][split] += 1
+        for k, v in (meta.get("camera_view") or {}).items():
+            if k in VIEW_BINS:
+                stats["views"][k][_bin(v, VIEW_BINS[k])] += 1
         if "coco" in formats:
             cc = coco[split]
             cc["images"].append(
@@ -375,6 +381,8 @@ def export(
             stats["per_class"][o["class_name"]] += 1
             stats["per_finish"][o["finish"]] += 1
             stats["per_size"][o["size"]] += 1
+            if o.get("view_angle_deg") is not None:
+                stats["view_angle_per_class"][o["class_name"]][_bin(o["view_angle_deg"], 10)] += 1
             if o.get("length") is not None:
                 stats["per_length"][f"{o['class_name']}x{o['length']:g}"] += 1
             if "crops" in formats and o.get("measurable") and o.get("keypoints_labelled"):
@@ -476,6 +484,14 @@ def export(
     return summary
 
 
+VIEW_BINS = {"height_mm": 25.0, "tilt_deg": 5.0, "tilt_direction_deg": 30.0, "roll_deg": 30.0}
+
+
+def _bin(value: float, width: float) -> str:
+    lo = math.floor(float(value) / width) * width
+    return f"{lo:g}-{lo + width:g}"
+
+
 def finalize_stats(
     stats: Mapping[str, Any], names: Mapping[int, str], st: Settings
 ) -> dict[str, Any]:
@@ -489,6 +505,16 @@ def finalize_stats(
         "per_size": dict(sorted(stats["per_size"].items())),
         "per_length": dict(sorted(stats["per_length"].items())),
         "dropped": stats["dropped"],
+        # images per camera-view bin and objects per viewing-angle bin (0 = seen from above)
+        "camera_views": {
+            k: dict(sorted(c.items(), key=lambda kv: float(kv[0].split("-")[0])))
+            for k, c in stats.get("views", {}).items()
+            if c
+        },
+        "view_angle_per_class": {
+            n: dict(sorted(c.items(), key=lambda kv: float(kv[0].split("-")[0])))
+            for n, c in sorted(stats.get("view_angle_per_class", {}).items())
+        },
         "min_instances_per_class": st.min_instances_per_class,
         "classes_below_min": low,
     }

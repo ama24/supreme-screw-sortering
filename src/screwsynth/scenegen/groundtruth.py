@@ -13,6 +13,7 @@ import numpy as np
 
 from .camera import RenderCamera
 from .placement import convex_hull_2d
+from .variation import view_angle_deg
 
 KEYPOINTS = ("head_top", "bearing", "tip")
 NOT_LABELLED, OCCLUDED, VISIBLE = 0, 1, 2
@@ -175,6 +176,7 @@ def object_meta(
     on_plate_mm: float = 0.3,
     lowest_z_mm: float | None = None,
     lying_on_it: Sequence[int] | None = None,
+    rig_view: bool = True,
 ) -> dict[str, Any]:
     """Ground-truth record of one object (all lengths in mm, pixels in the undistorted render).
 
@@ -183,7 +185,9 @@ def object_meta(
     free: nothing rests on it (a candidate for the picker). occluded_by: parts covering some of it
     in the image (also neighbours leaning over it in perspective). measurable: a screw lying on
     the plate, nearly flat, free, inside the image and with all three keypoints visible, so its
-    length can be measured exactly.
+    length can be measured exactly; only in the rig camera's view (rig_view), since the
+    measurement relies on the calibrated camera looking straight down. view_angle_deg: angle between
+    the camera ray to the part and the vertical (0 = seen from straight above).
     """
     kps_local = {k: np.asarray(part["keypoints"][k]["xyz"], dtype=float) for k in KEYPOINTS}
     labelled = bool(part["keypoints"]["tip"]["labelled"])
@@ -225,7 +229,8 @@ def object_meta(
         "axis_height_tip_mm": round(float(kp_plate["tip"][2]), 6) if is_screw else None,
         "axis_height_head_top_mm": round(float(kp_plate["head_top"][2]), 6) if is_screw else None,
         "measurable": bool(
-            is_screw
+            rig_view
+            and is_screw
             and abs(tilt) <= measurable_tilt_deg
             and on_plate
             and not on_it
@@ -233,6 +238,7 @@ def object_meta(
             and labelled
             and all(v_ == VISIBLE for v_ in vis)
         ),
+        "view_angle_deg": round(view_angle_deg(cam, np.asarray(T_plate)[:3, 3]), 3),
         "support": "plate" if on_plate else "parts",
         "lowest_z_mm": round(zmin, 4),
         "occluded_by": sorted(over),

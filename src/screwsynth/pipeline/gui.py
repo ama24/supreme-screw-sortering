@@ -9,6 +9,7 @@ recipes/<name>.yaml and runs exactly what `screwsynth-dataset run <name>` runs.
 from __future__ import annotations
 
 import copy
+import dataclasses
 import json
 import logging
 import math
@@ -50,6 +51,7 @@ from .steps import (
     preflight,
     read_status,
 )
+from .views_tab import camera_views_card, environment_tab
 
 log = logging.getLogger("screwsynth.pipeline.gui")
 
@@ -214,6 +216,10 @@ class Widgets:
             return
         ed = self.ed
         value = ed.get(f.path)
+        if not _fits(f.kind, value):
+            # a recipe may hold another shape than config.yaml's default (a range where the
+            # default is one number, e.g. scenegen.camera.tilt_deg): edit and save it as YAML
+            f = dataclasses.replace(f, kind="yaml")
         with ui.row().classes("w-full items-center no-wrap gap-2"):
             name = ui.label(label or f.key).classes("w-56 shrink-0")
             if f.help:
@@ -296,6 +302,17 @@ class Widgets:
                 .classes("w-full font-mono text-xs")
             )
             area.on("blur", lambda: store(area.value))
+
+
+def _fits(kind: str, value: Any) -> bool:
+    """Whether a value can be edited with the widget of a field kind."""
+    if kind in ("int", "float"):
+        return isinstance(value, int | float) and not isinstance(value, bool)
+    if kind == "pair":
+        return isinstance(value, list | tuple) and len(value) == 2
+    if kind in ("str", "choice"):
+        return isinstance(value, str)
+    return True
 
 
 def _step(value: Any) -> float:
@@ -391,6 +408,7 @@ class BuilderPage:
             t_data = ui.tab("Dataset", icon="dataset")
             t_cam = ui.tab("Camera", icon="photo_camera")
             t_bg = ui.tab("Background", icon="texture")
+            t_env = ui.tab("Environment", icon="panorama_photosphere")
             t_parts = ui.tab("Parts", icon="category")
             t_set = ui.tab("All settings", icon="tune")
             t_run = ui.tab("Run", icon="play_arrow")
@@ -399,6 +417,7 @@ class BuilderPage:
             "dataset": t_data,
             "camera": t_cam,
             "background": t_bg,
+            "environment": t_env,
             "parts": t_parts,
             "settings": t_set,
             "run": t_run,
@@ -410,6 +429,8 @@ class BuilderPage:
                 self.camera_tab()
             with ui.tab_panel(t_bg):
                 background_tab(self)
+            with ui.tab_panel(t_env):
+                environment_tab(self)
             with ui.tab_panel(t_parts):
                 self.parts_tab()
             with ui.tab_panel(t_set):
@@ -563,6 +584,7 @@ class BuilderPage:
                 for f in ed.field("scenegen.nominal_camera").children:
                     self.w.field(f.path, f=f)
                 self.w.field("scenegen.plate.thickness_mm", "TPU plate thickness (mm)")
+            camera_views_card(self)
 
     # ---------------------------------------------------------------- parts tab
 

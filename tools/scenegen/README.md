@@ -158,6 +158,68 @@ Runs are **resumable and deterministic**:
    real photo.
 5. **Early stop.** Placement stops once `give_up_after` parts in a row do not fit (the plate is full).
 
+### Camera views and HDRI environments
+
+By default every image is the rig's own view: the calibrated (or nominal) camera looking straight down.
+`scenegen.camera` and `scenegen.environment` add other views and room lighting, for photos that are not
+taken by the rig (e.g. a phone held over the plate).
+
+**Camera views (`scenegen.camera`).** Each setting is one value (fixed) or a range `[min, max]`:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `height_mm` | `calibrated` | Camera height above the plate (`calibrated` = the camera's own height) |
+| `tilt_deg` | 0 | Tilt from vertical (0 = straight down) |
+| `tilt_direction_deg` | [0, 360] | The side the camera looks from, in the plate frame (0 = from +x, 90 = from +y); only matters when tilted |
+| `roll_deg` | 0 | Image rotation around the view axis |
+
+- **One camera per layout.** All photos of a layout (lighting variants, the photos after removals) share it,
+  like a camera that stays put while the picker works.
+- **The camera swings around the centre of the working area**, keeping its height above the plate, so the
+  centre of the working area is always the centre of the image.
+- **Even coverage.** Ranges are covered evenly with a seeded Halton sequence (one prime base per setting),
+  indexed by the layout number:
+  - the first N layouts cover each range evenly, for any N (stopping at 412 is fine);
+  - layouts added later fill the gaps instead of repeating (500, then 500 more);
+  - the combinations are covered too (steep tilts are not bunched at one height);
+  - the same seed and layout number always give the same view, also with parallel render workers.
+- **The defaults are exactly the usual dataset.** With the calibrated height, tilt 0 and roll 0, the rig
+  camera is used unchanged, and the plate, shroud and lights are as before.
+- **The scene grows to fit.** With other views, the plate and the shroud are made big enough for every view of
+  the ranges, the light panel stays above the camera, and the calibrated empty-plate photo is not used (it is
+  the rig camera's picture); those views draw from the surface photos and solid colours instead.
+- **Not measurable.** Objects in any other view than the rig's are `measurable: false`: length measurement
+  (tool 08) relies on the calibrated camera looking straight down. Detection and classification use them fully.
+- **The horizon is refused.** A tilt whose image corners look more than 80° from vertical is rejected with a
+  message.
+
+**HDRI environments (`scenegen.environment`).** A 360° HDR photo of a room around the scene: it lights the
+parts and shows in their reflections (stainless, zinc and brass look like they do in a room).
+
+| Key | Default | Meaning |
+|---|---|---|
+| `enabled` | false | An HDRI per layout |
+| `strength` | [0.3, 1.5] | Brightness, one value or a range (covered evenly) |
+| `rotation_deg` | [0, 360] | Turns the environment, one value or a range (covered evenly) |
+| `panel_light` | true | Keep the LED panel on as well (false = the HDRI is the only light) |
+
+- **Offline.** Only the `.hdr`/`.exr` files in `paths.hdri_dir` (default `data/hdri`) are used; nothing is
+  downloaded. Add them in the GUI's Environment tab or copy them into the folder. Files can be switched off
+  there (`hdri.yaml` keeps the list); the files themselves are not tracked by git.
+- **Where to get them** (by hand, once):
+  - [Poly Haven](https://polyhaven.com/hdris): CC0, free for any use; 2K–4K is enough.
+  - [ambientCG](https://ambientcg.com/list?type=hdri): CC0.
+  - [sIBL Archive](http://www.hdrlabs.com/sibl/archive.html): free for non-commercial use; check each licence.
+- **Open room.** When an HDRI is used, the shroud is left out (a closed shroud would block it).
+- **Each file is used equally often:** every block of N layouts uses each of the N files once, in a seeded
+  shuffled order.
+- **Enabled without files:** a warning, and the renders stay as usual.
+- The HDRI file, strength and rotation of each image are in `meta.json` (`lighting.environment`).
+
+**Report.** The labels export writes, in `stats.json`, `camera_views` (images per height, tilt, direction and
+rotation bin) and `view_angle_per_class` (objects per 10° bin of the angle at which they are seen), to check
+the spread before training.
+
 ## Output layout
 
 ```
@@ -185,8 +247,9 @@ output/<run>/
 | `scene_id`, `layout_id`, `variant`, `seed`, `scene_kind` | Identification (`scene_kind`: clumped / normal / few / crowded) |
 | `removal_step`, `removed_ids` | Photo number after removals (0 = as placed), and the instance ids removed so far |
 | `camera` | `K` (render), `K_full`, `dist_coeffs`, `image_size_full`, `roi`, `resolution`, `resolution_scale`, `T_cam_plate`, `distorted: false` |
+| `camera_view` | `rig_view` (true = the rig's own view), `height_mm`, `tilt_deg`, `tilt_direction_deg`, `roll_deg` |
 | `world_scale`, `area_mm` | Blender scale and the placement rectangle |
-| `lighting` | Sampled light/plate parameters |
+| `lighting` | Sampled light/plate parameters; `environment` (HDRI file, strength, rotation) when one is used |
 | `objects[]` | One record per kept object (below) |
 | `dropped[]` | `{part_id, reason}` for parts discarded after the settle |
 | `fully_hidden_ids` | Kept objects with no visible pixel |
@@ -206,7 +269,8 @@ Per object:
 | `support`, `lowest_z_mm` | `plate` when the lowest point is within `on_plate_mm` of the plate, else `parts` (it rests on other parts) |
 | `lying_on_it`, `free` | Ids of the parts physically resting on this one (from the 3D poses); `free` when there are none (the picker can take it) |
 | `occluded_by` | Parts covering at least `occlusion_min_mm2` of it in the image (also neighbours leaning over it in perspective) |
-| `measurable` | A screw lying on the plate, \|axis tilt\| ≤ `restposes.measurable_tilt_deg`, free, not truncated, all three keypoints visible |
+| `measurable` | A screw lying on the plate, \|axis tilt\| ≤ `restposes.measurable_tilt_deg`, free, not truncated, all three keypoints visible, in the rig's own view |
+| `view_angle_deg` | Angle between the camera ray to the part and the vertical (0 = seen from straight above) |
 | `mask_area_px`, `alone_area_px`, `alone_area_in_image_px` | Visible pixels, the silhouette when alone, and the part of it inside the image |
 | `visible_pixel_fraction` | `mask_area_px / alone_area_px` |
 | `truncated` | Cut by the image border |
@@ -233,6 +297,8 @@ Per object:
 | `unknown_fraction` | 0.08 | Share of parts that are unknown junk (class UNKNOWN), drawn outside the class balancing |
 | `variants_per_layout`, `keypoint_window_px` | 1, 2 | Lighting variants and keypoint visibility window |
 | `nominal_camera.*` | 4.74 mm, 1.4 µm, 4608×2592, 300 mm | `--nominal-camera` |
+| `camera.*` | calibrated height, tilt 0, direction [0, 360], roll 0 | Camera view per layout (see Camera views) |
+| `environment.*` | off, strength [0.3, 1.5], rotation [0, 360], panel on | HDRI environments (see Camera views) |
 | `physics.*` | drop 0.05 mm, top clearance 0.5 mm, reach 20 mm, 0.4–1.5 s, 20 substeps/iters, friction 0.6, margin 0.05 mm | Settle |
 | `discard.*` | move 30 mm, stack 25 mm, below 1 mm | Post-settle rejection |
 | `render.*` | OPTIX, 64 samples, threshold 0.02, OPTIX denoiser, scale 1.0, bounces 6/3/4/2, depth off | Cycles |

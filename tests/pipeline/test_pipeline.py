@@ -439,6 +439,50 @@ async def test_gui_background_switches(tmp_path, monkeypatch):
     }
 
 
+@pytest.mark.anyio
+async def test_gui_camera_views_and_environment(tmp_path, monkeypatch):
+    """Camera tab: a view setting switched from fixed to range is saved."""
+    pytest.importorskip("nicegui")
+    from nicegui.testing.user_simulation import user_simulation
+
+    from screwsynth.pipeline import gui
+
+    monkeypatch.setattr(recipe, "recipes_dir", lambda: tmp_path)
+    monkeypatch.setattr(gui, "recipes_dir", lambda: tmp_path)
+    Recipe("viewtest").save(tmp_path / "viewtest.yaml")
+    async with user_simulation(root=gui.page) as user:
+        await user.open("/?recipe=viewtest&tab=camera")
+        await user.should_see("Camera views per layout")
+        await user.should_see("Rig view only (the usual dataset).")
+        tilt = user.find(marker="mode-scenegen.camera.tilt_deg").elements.pop()
+        tilt.value = "range"
+        await user.should_see("Varied views")
+        user.find(marker="save").click()
+    saved = recipe.load_recipe(tmp_path / "viewtest.yaml")
+    assert saved.config["scenegen"]["camera"]["tilt_deg"] == [0, 30]
+
+
+@pytest.mark.anyio
+async def test_gui_environment_tab_offline(tmp_path, monkeypatch):
+    pytest.importorskip("nicegui")
+    from nicegui.testing.user_simulation import user_simulation
+
+    from screwsynth.pipeline import gui
+
+    monkeypatch.setattr(recipe, "recipes_dir", lambda: tmp_path)
+    monkeypatch.setattr(gui, "recipes_dir", lambda: tmp_path)
+    r = Recipe("envtest")
+    r.config = {"scenegen": {"camera": {"tilt_deg": [0, 30], "height_mm": [250, 400]}}}
+    r.save(tmp_path / "envtest.yaml")
+    async with user_simulation(root=gui.page) as user:
+        # every tab is built: a range where config.yaml has one number (or a word) must not crash
+        await user.open("/?recipe=envtest&tab=environment")
+        await user.should_see("Poly Haven")
+        await user.should_see("Off: the scene is lit as usual (shroud, LED panel).")
+        await user.should_see("HDRI environment (off by default)")
+        await user.should_see("Off: the scene is lit as usual (shroud, LED panel).")
+
+
 def test_dataset_outputs_explain_each_file(tmp_path):
     assert steps.dataset_outputs(tmp_path) == []
     for f in ("seg.yaml", "crops.yaml"):
