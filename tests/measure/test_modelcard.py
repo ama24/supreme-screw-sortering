@@ -1,7 +1,7 @@
 import json
 
 from screwsynth.common.io import write_yaml
-from screwsynth.measure.modelcard import check_classes
+from screwsynth.measure.modelcard import check_classes, find_card
 
 
 def test_model_card_and_catalogue_checks(tmp_path):
@@ -19,3 +19,21 @@ def test_model_card_and_catalogue_checks(tmp_path):
     assert errors  # swapped order: the package is mixed up
     errors, warnings = check_classes(tmp_path / "x.pt", {0: "FOO"}, classes)
     assert errors == [] and any("does not" in w for w in warnings)
+
+
+def test_model_card_found_from_an_export(tmp_path):
+    pkg = tmp_path / "stage1"
+    export = pkg / "exports" / "ncnn_fp32" / "best_ncnn_model"
+    export.mkdir(parents=True)
+    (pkg / "model_card.json").write_text("{}")
+    assert find_card(export) == pkg / "model_card.json"
+    assert find_card(pkg / "best.pt") == pkg / "model_card.json"
+
+
+def test_show_image_without_a_screen(tmp_path, monkeypatch):
+    from screwsynth.measure import cli
+
+    monkeypatch.setattr(cli.sys, "platform", "linux")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    assert cli.show_image(tmp_path / "x_vis.jpg") is False  # over SSH: warn, do not crash

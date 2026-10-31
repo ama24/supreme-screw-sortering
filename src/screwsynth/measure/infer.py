@@ -409,4 +409,10 @@ def draw(scene: Scene, result: Mapping[str, Any], max_side: int = 2048) -> np.nd
         img = cv2.resize(
             img, (round(img.shape[1] * s), round(img.shape[0] * s)), interpolation=cv2.INTER_AREA
         )
+    n = len(result["objects"])
+    summary = f"{n} object(s), {sum(1 for o in result['objects'] if o.get('length'))} measured"
+    for colour, thick in (((0, 0, 0), 6), ((255, 255, 255), 2)):  # outlined: readable on any plate
+        cv2.putText(
+            img, summary, (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.4, colour, thick, cv2.LINE_AA
+        )
     return img

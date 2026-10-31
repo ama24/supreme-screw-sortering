@@ -10,16 +10,19 @@ sorter loop: photo → detect → measure → pick.
 It uses the `screwsynth` package from the repository root for the shared parts: config, catalogue, session files,
 calibration recheck and measurement.
 
-## Install (Raspberry Pi OS Bookworm)
+## Install (Raspberry Pi OS Bookworm, 64-bit)
 
 ```bash
-sudo apt update && sudo apt install -y python3-picamera2 python3-numpy git
+sudo apt update && sudo apt install -y python3-picamera2 python3-numpy git libgl1
 git clone https://github.com/ama24/supreme-screw-sortering.git && cd supreme-screw-sortering
 python3 -m venv --system-site-packages ~/screwrig     # Picamera2 comes from apt, not pip
 source ~/screwrig/bin/activate
-pip install -r rig/requirements-pi.txt                # screwsynth + screwrig + OpenCV (headless)
+pip install -r rig/requirements-pi.txt                # screwsynth + screwrig + OpenCV + Ultralytics + NCNN
 screwrig --help
 ```
+
+The install takes 10–20 minutes: Ultralytics pulls PyTorch for the Pi's CPU. It needs the 64-bit OS
+(`uname -m` prints `aarch64`).
 
 On the PC (for tests or development): `pip install -e . -e rig/`. OpenCV comes from `screwsynth[calib]` there.
 
@@ -31,6 +34,29 @@ On the PC (for tests or development): `pip install -e . -e rig/`. OpenCV comes f
 | `screwrig calib-capture --mode intrinsics\|extrinsic\|sensor\|single --out <dir>` | Calibration captures with the locked settings. It refuses to run if the camera does not apply them exactly. |
 | `screwrig capture --session s01 --settings camera_settings.json [--recheck]` | Real-data session. Each Enter homes/parks the bed and saves a photo plus sidecar into `data/real/s01/images`. Create the session first with `screwsynth-real session new`. |
 | `screwrig printer park\|status` | Homes Y (and parks it, if configured), then reports the position |
+
+## Run the trained model
+
+1. **Export** in model-trainer: run page > Export > **NCNN**, **fp32** (the fastest format on a Pi; fp16 gives
+   little on a Pi 4, whose CPU has no fast 16-bit maths).
+2. **Copy** the run's whole package folder into `models/stage1` on the Pi (see [../models/README.md](../models/README.md)).
+   From PowerShell on the PC:
+   ```powershell
+   scp -r "<package folder>" pi@screwrig.local:~/supreme-screw-sortering/models/stage1
+   ```
+3. **Photo and detection:**
+   ```bash
+   source ~/screwrig/bin/activate && cd ~/supreme-screw-sortering
+   mkdir -p data/real/test
+   rpicam-still -o data/real/test/plate_001.jpg --width 4608 --height 2592 --immediate
+   screwsynth-infer --image data/real/test/plate_001.jpg        --stage1 models/stage1/exports/ncnn_fp32/best_ncnn_model --nominal-camera --show
+   ```
+   It writes `plate_001_vis.jpg` (outlines, classes, lengths, and the number of objects at the top left) and
+   `plate_001_result.json` next to the photo, and `--show` opens the picture in the image viewer. That needs the
+   Pi's desktop: run it in a terminal on the Pi itself. Over SSH there is no screen, so it only writes the file
+   (copy it to the PC with `scp`).
+   Leave out `--nominal-camera` once `data/calibration/calibration.json` exists. Add `--stage2
+   models/stage2/...` for the keypoint model; without it, lengths come from the classical edge method.
 
 ## Printer safety
 
