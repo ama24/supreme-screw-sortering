@@ -18,9 +18,14 @@ log = logging.getLogger("screwsynth.measure")
 
 
 def find_card(weights: str | Path) -> Path | None:
-    """model_card.json next to the weights (package/best.pt) or in the run's package folder."""
+    """model_card.json next to the weights (package/best.pt), in the run's package folder, or in the
+    package above an export (package/exports/ncnn_fp32/best_ncnn_model)."""
     w = Path(weights)
-    for c in (w.parent / "model_card.json", w.parent.parent / "package" / "model_card.json"):
+    for c in (
+        w.parent / "model_card.json",
+        w.parent.parent / "package" / "model_card.json",
+        w.parent.parent.parent / "model_card.json",
+    ):
         if c.is_file():
             return c
     return None

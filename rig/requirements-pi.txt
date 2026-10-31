@@ -1,8 +1,12 @@
-# Raspberry Pi (Raspberry Pi OS Bookworm). Picamera2 and libcamera come from apt, not pip:
-#   sudo apt install -y python3-picamera2 python3-numpy git
+# Raspberry Pi (Raspberry Pi OS Bookworm, 64-bit). Picamera2 and libcamera come from apt, not pip:
+#   sudo apt install -y python3-picamera2 python3-numpy git libgl1
 # Create the venv with system packages so Picamera2 is visible, then install both packages:
 #   python3 -m venv --system-site-packages ~/screwrig && source ~/screwrig/bin/activate
 #   pip install -r rig/requirements-pi.txt
 opencv-contrib-python-headless>=4.8
+# running the trained model on the Pi (screwsynth-infer): Ultralytics (pulls PyTorch for the CPU)
+# and NCNN, the fastest model format on a Raspberry Pi (model-trainer: Export > NCNN)
+ultralytics>=8.4
+ncnn
 -e .
 -e ./rig
