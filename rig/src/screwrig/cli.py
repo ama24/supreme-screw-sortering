@@ -4,6 +4,7 @@ screwrig lock           lock exposure, gain, white balance and focus -> camera_s
 screwrig calib-capture  calibration captures (intrinsics, extrinsic, sensor, single)
 screwrig capture        real-data session: home/park the bed, capture, save (tool 09)
 screwrig printer        home/park the bed, report the position
+screwrig detect         Enter = photo -> segmentation -> result page in the browser
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from collections.abc import Sequence
 from screwsynth.common.config import load_config
 from screwsynth.common.log import setup_logging
 
-from . import capture, lock, session
+from . import capture, detect, lock, session
 
 
 def cmd_printer(args: argparse.Namespace) -> int:
@@ -41,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("lock", lock, "lock the camera settings (run once per rig change)"),
         ("calib-capture", capture, "calibration captures with the locked settings"),
         ("capture", session, "capture a real-data session"),
+        ("detect", detect, "photo -> segmentation -> result page, one Enter per photo"),
     ):
         sp = sub.add_parser(name, help=text, description=mod.__doc__)
         mod.add_arguments(sp)

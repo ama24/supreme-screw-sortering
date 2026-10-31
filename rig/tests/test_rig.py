@@ -1,4 +1,5 @@
 import argparse
+import json
 
 import cv2
 import numpy as np
@@ -110,3 +111,49 @@ def test_printer_needs_a_port(monkeypatch):
     with pytest.raises(SystemExit):
         cli.cmd_printer(argparse.Namespace(action="status", config=None))
     assert cli.session.printer_from_config(Config({"rig": {"printer": {"port": None}}})) is None
+
+
+def test_detect_numbering_model_and_page(tmp_path):
+    import time
+    import urllib.request
+
+    from screwrig import detect
+
+    assert detect.next_number(tmp_path) == 1
+    for name in ("det_0001.jpg", "det_0001_vis.jpg", "det_0007_result.json", "other.jpg"):
+        (tmp_path / name).write_text("x")
+    assert detect.next_number(tmp_path) == 8  # a rerun continues after the highest number
+
+    models = tmp_path / "models"
+    assert detect.find_model(models) is None
+    (models / "a").mkdir(parents=True)
+    (models / "a" / "best.pt").write_text("x")
+    assert detect.find_model(models) == models / "a" / "best.pt"
+    (models / "a" / "exports" / "best_ncnn_model").mkdir(parents=True)
+    assert detect.find_model(models).name == "best_ncnn_model"  # NCNN preferred on the Pi
+
+    result = {
+        "objects": [
+            {"class": "DIN912_M4", "score": 0.91, "length": {"length_mm": 16.0}},
+            {"class": "DIN934_M4", "score": 0.8},
+        ]
+    }
+    assert detect.summary_lines(result) == ["DIN912_M4 16 mm (0.91)", "DIN934_M4 (0.80)"]
+
+    out = tmp_path / "out"
+    out.mkdir()
+    detect._status(out, "analysing", "det_0001_vis.jpg", ["DIN912_M4 16 mm (0.91)"])
+    detect._status(out, "ready")  # keeps the last image
+    server = detect.serve(out, 18765)
+    try:
+        port = server.server_address[1]
+        for _ in range(20):
+            try:
+                body = urllib.request.urlopen(f"http://127.0.0.1:{port}/latest.json").read()
+                break
+            except OSError:
+                time.sleep(0.1)
+        latest = json.loads(body)
+        assert latest["status"] == "ready" and latest["image"] == "det_0001_vis.jpg"
+    finally:
+        server.shutdown()
