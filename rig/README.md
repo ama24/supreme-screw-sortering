@@ -49,9 +49,12 @@ On the PC (for tests or development): `pip install -e . -e rig/`. OpenCV comes f
    source ~/screwrig/bin/activate && cd ~/supreme-screw-sortering
    mkdir -p data/real/test
    rpicam-still -o data/real/test/plate_001.jpg --width 4608 --height 2592 --immediate
-   screwsynth-infer --image data/real/test/plate_001.jpg        --stage1 models/stage1/exports/ncnn_fp32/best_ncnn_model --nominal-camera --save-vis
+   screwsynth-infer --image data/real/test/plate_001.jpg        --stage1 models/stage1/exports/ncnn_fp32/best_ncnn_model --nominal-camera --show
    ```
-   It writes `plate_001_vis.jpg` (outlines, classes, lengths) and `plate_001_result.json` next to the photo.
+   It writes `plate_001_vis.jpg` (outlines, classes, lengths, and the number of objects at the top left) and
+   `plate_001_result.json` next to the photo, and `--show` opens the picture in the image viewer. That needs the
+   Pi's desktop: run it in a terminal on the Pi itself. Over SSH there is no screen, so it only writes the file
+   (copy it to the PC with `scp`).
    Leave out `--nominal-camera` once `data/calibration/calibration.json` exists. Add `--stage2
    models/stage2/...` for the keypoint model; without it, lengths come from the classical edge method.
 

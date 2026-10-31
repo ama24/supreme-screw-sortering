@@ -86,7 +86,7 @@ screwsynth-infer --image capture.png --stage1 runs/seg/stage1_nano/weights/best.
    - the thread diameter and `size_check`;
    - **`position_mm`** (plate frame) and **`orientation_deg`**, for a pick-and-place head.
 
-   `--save-vis` also writes an annotated image. Unknown parts (class `UNKNOWN`) are listed but not measured.
+   `--save-vis` also writes an annotated image; `--show` writes it and opens it in the image viewer (needs a desktop). Unknown parts (class `UNKNOWN`) are listed but not measured.
 
 `measure.stage1_weights` / `measure.stage2_weights` in the config set the default weights.
 

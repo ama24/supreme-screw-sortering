@@ -22,6 +22,29 @@ def _out(text: str = "") -> None:
     sys.stdout.flush()
 
 
+def show_image(path: Path) -> bool:
+    """Open an image in the system's default viewer; False when there is no screen (e.g. over SSH)."""
+    import os
+    import shutil
+    import subprocess
+
+    if sys.platform == "win32":
+        os.startfile(path)  # type: ignore[attr-defined]
+        return True
+    if sys.platform == "darwin":
+        opener = "open"
+    else:
+        if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+            return False
+        opener = "xdg-open"
+    if shutil.which(opener) is None:
+        return False
+    subprocess.Popen(  # the viewer outlives this command
+        [opener, str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+    return True
+
+
 def _calibration(cfg, args: argparse.Namespace) -> dict | None:
     if getattr(args, "nominal_camera", False):
         return None
@@ -58,6 +81,9 @@ def infer_main(argv: Sequence[str] | None = None) -> int:
     p.add_argument("--method", choices=["auto", "keypoints", "classical"])
     p.add_argument("--out", help="output folder (default next to the image)")
     p.add_argument("--save-vis", action="store_true", help="also write <image>_vis.jpg")
+    p.add_argument(
+        "--show", action="store_true", help="write <image>_vis.jpg and open it in the image viewer"
+    )
     p.add_argument("--config")
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args(argv)
@@ -85,8 +111,11 @@ def infer_main(argv: Sequence[str] | None = None) -> int:
         out_dir = resolve(args.out) if args.out else path.parent
         out_dir.mkdir(parents=True, exist_ok=True)
         write_json(out_dir / f"{path.stem}_result.json", result)
-        if args.save_vis:
-            cv2.imwrite(str(out_dir / f"{path.stem}_vis.jpg"), draw(scene, result))
+        vis = out_dir / f"{path.stem}_vis.jpg"
+        if args.save_vis or args.show:
+            cv2.imwrite(str(vis), draw(scene, result))
+        if args.show and not show_image(vis):
+            log.warning("no screen to show %s on (over SSH?): open it on the Pi's desktop", vis)
         n = len(result["objects"])
         measured = [o for o in result["objects"] if o.get("length")]
         _out(

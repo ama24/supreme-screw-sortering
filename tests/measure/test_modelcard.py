@@ -28,3 +28,12 @@ def test_model_card_found_from_an_export(tmp_path):
     (pkg / "model_card.json").write_text("{}")
     assert find_card(export) == pkg / "model_card.json"
     assert find_card(pkg / "best.pt") == pkg / "model_card.json"
+
+
+def test_show_image_without_a_screen(tmp_path, monkeypatch):
+    from screwsynth.measure import cli
+
+    monkeypatch.setattr(cli.sys, "platform", "linux")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    assert cli.show_image(tmp_path / "x_vis.jpg") is False  # over SSH: warn, do not crash

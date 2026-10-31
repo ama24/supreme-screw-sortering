@@ -12,5 +12,5 @@ models/
   stage2/                      <- optional: the keypoint run's package
 ```
 
-Then: `screwsynth-infer --stage1 models/stage1/exports/ncnn_fp32/best_ncnn_model ...` (see `rig/README.md`).
+Then: `screwsynth-infer --stage1 models/stage1/exports/ncnn_fp32/best_ncnn_model --show ...` (see `rig/README.md`).
 Paths are relative to the repository root, from any folder.
